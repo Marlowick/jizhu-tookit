@@ -1,0 +1,33 @@
+# 依赖与构建产物
+node_modules/
+dist/
+src-tauri/target/
+target/
+.npm-cache/
+.DS_Store
+
+# 设计源文件：不公开
+ui/
+*.psd
+*.psb
+
+# 本地环境与密钥
+.env
+.env.*
+!.env.example
+*.log
+*.p12
+*.pem
+*.key
+*.mobileprovision
+
+# Tauri 生成
+src-tauri/gen/
+
+# 本地 Agent 文档、设计稿与检查产物，不进入公开仓库
+docs/
+audit/
+assets/
+RELEASING.md
+scripts/shot.mjs
+scripts/audit-deps.sh

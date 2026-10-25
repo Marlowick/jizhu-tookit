@@ -1,0 +1,4 @@
+[toolchain]
+# 公开源码版本固定 Rust 版本，保证 CI 与本地一致
+channel = "1.93.1"
+components = ["rustfmt", "clippy"]

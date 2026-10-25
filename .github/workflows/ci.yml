@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  rust:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.93.1
+        with:
+          components: rustfmt
+      - run: npm ci
+      - run: npm run build
+      - run: cargo fmt --all --check
+      - run: cargo test -p jizhu-core
+      - run: cargo test -p jizhu
+
+  ui-smoke:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+      - run: npm ci
+      - name: UI checks
+        env:
+          JIZHU_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/vite.log 2>&1 &
+          SERVER=$!
+          trap "kill $SERVER 2>/dev/null || true" EXIT
+          for i in {1..40}; do
+            curl -sf http://127.0.0.1:1420/ >/dev/null && break || sleep 1
+          done
+          node scripts/mvp-check.mjs
+          node scripts/jq-ui-check.mjs
+          node scripts/jq-tool-check.mjs
+          node scripts/diff-ui-check.mjs
+          node scripts/regex-ui-check.mjs
+          node scripts/pipeline-ui-check.mjs
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev
+      - uses: EmbarkStudios/cargo-deny-action@v2

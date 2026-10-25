@@ -1,0 +1,17 @@
+[package]
+name = "jizhu-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "机杼核心数据处理逻辑：纯函数、无 IO、无 Tauri 依赖"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+jaq-core = "3.1"
+jaq-json = "2.0"
+jaq-std = "3.0"
+fancy-regex = "0.14"
+similar = "3"
+url = "2"
+percent-encoding = "2"
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }

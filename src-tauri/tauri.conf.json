@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "jizhu",
+  "version": "0.1.0",
+  "identifier": "dev.jizhu.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "机杼工具箱",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 1080,
+        "minHeight": 680,
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 20
+        },
+        "dragDropEnabled": true,
+        "backgroundColor": "#ffffff"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self' http://127.0.0.1:1420; script-src 'self' 'unsafe-inline' http://127.0.0.1:1420; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420; font-src 'self' data:",
+      "freezePrototype": false
+    },
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "© 2026 jizhu contributors",
+    "category": "DeveloperTool",
+    "shortDescription": "本地优先的开发者数据加工台",
+    "longDescription": "机杼工具箱是一个本地优先、键盘优先的开发者数据加工台，覆盖 JSON、Diff、URL、时间、编码、正则、二维码与管道处理。",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}

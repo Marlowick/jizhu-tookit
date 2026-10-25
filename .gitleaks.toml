@@ -1,0 +1,21 @@
+title = "jizhu secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated, vendor, binary and design-source paths"
+paths = [
+  '''node_modules/''',
+  '''target/''',
+  '''src-tauri/target/''',
+  '''dist/''',
+  '''ui/''',
+  '''.git/''',
+  '''coverage/''',
+  '''src-tauri/gen/''',
+  '''docs/assets/''',
+  '''audit/''',
+  '''package-lock.json''',
+  '''Cargo.lock''',
+]
