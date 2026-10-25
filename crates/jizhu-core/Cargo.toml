@@ -10,7 +10,7 @@ serde = { version = "1", features = ["derive"] }
 jaq-core = "3.1"
 jaq-json = "2.0"
 jaq-std = "3.0"
-fancy-regex = "0.14"
+fancy-regex = "0.19"
 similar = "3"
 url = "2"
 percent-encoding = "2"
