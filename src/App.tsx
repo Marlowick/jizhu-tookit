@@ -1,95 +1,103 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   AlignJustify,
+  Asterisk,
+  Binary,
+  Clock3,
   Copy,
-  Download,
-  FileJson,
-  FolderOpen,
+  GitCompare,
+  Link2,
   Minimize2,
+  Plus,
+  QrCode,
   Settings,
-  X,
+  Undo2,
+  Workflow,
   Zap,
 } from 'lucide-react'
 import { CommandPalette } from './components/CommandPalette'
-import { ComingSoon } from './components/ComingSoon'
-import { JsonTool } from './components/JsonTool'
-import { CodecTool } from './components/CodecTool'
-import { DiffTool } from './components/DiffTool'
-import { JqTool } from './components/JqTool'
-import { PipelineTool } from './components/PipelineTool'
-import { QrTool } from './components/QrTool'
-import { RegexTool } from './components/RegexTool'
-import { TimeTool } from './components/TimeTool'
-import { UrlTool } from './components/UrlTool'
+import { SettingsDialog } from './components/SettingsDialog'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
-import { NewTabPicker } from './components/NewTabPicker'
-import { SettingsDialog } from './components/SettingsDialog'
 import { TitleBar } from './components/TitleBar'
-import { ToolHeader } from './components/ToolHeader'
-import { WelcomeView } from './components/WelcomeView'
+import { WorkspaceView } from './components/workspace/WorkspaceView'
 import type { CommandItem } from './core/commands'
+import { requestEditorUndo } from './core/editorActions'
 import {
   copyText,
   errorMessage,
   formatJson,
   isTauri,
   minifyJson,
-  notifyUiReady,
-  openTextFile,
-  saveTextFile,
 } from './core/ipc'
-import { isModPressed, modKey } from './core/keyboard'
-import { TOOLS, toolMeta } from './core/tools'
-import { toolTitle } from './core/i18n'
-import { useI18n } from './core/useI18n'
-import type { ToolId } from './core/types'
+import { isModPressed } from './core/keyboard'
+import type { WorkspacePanelType } from './core/types'
 import {
   selectActiveDoc,
   selectActiveTab,
   useAppStore,
 } from './store/appStore'
 
+const PANELS: Array<{
+  type: WorkspacePanelType
+  title: string
+  description: string
+  icon: typeof Zap
+}> = [
+  { type: 'jq', title: 'jq 查询', description: '打开查询面板；表达式在沙箱执行', icon: Zap },
+  { type: 'diff', title: 'Diff 对比', description: '以当前标签为源，比较文本/JSON/URL', icon: GitCompare },
+  { type: 'qr', title: '二维码', description: '把选中行或当前文本生成 QR', icon: QrCode },
+  { type: 'pipeline', title: 'Pipeline 批处理', description: 'jq / 编码 / 正则 / 计数步骤链', icon: Workflow },
+  { type: 'url', title: 'URL 解析', description: '拆解并编辑当前 URL 参数', icon: Link2 },
+  { type: 'time', title: '时间转换', description: '时间戳与日期互转', icon: Clock3 },
+  { type: 'regex', title: '正则匹配', description: '手动 ⌘F 搜索，支持替换预览', icon: Asterisk },
+  { type: 'codec', title: '编码 / 解码', description: 'Base64 / URL / HTML / Unicode / Hex', icon: Binary },
+]
+
 export default function App() {
   const activeTab = useAppStore(selectActiveTab)
   const activeDoc = useAppStore(selectActiveDoc)
-  const summary = useAppStore((state) => state.summary)
-  const paletteOpen = useAppStore((state) => state.paletteOpen)
-  const toast = useAppStore((state) => state.toast)
   const settings = useAppStore((state) => state.settings)
+  const paletteOpen = useAppStore((state) => state.paletteOpen)
   const settingsOpen = useAppStore((state) => state.settingsOpen)
-  const [systemDark, setSystemDark] = useState(false)
-  const [newTabOpen, setNewTabOpen] = useState(false)
-  const { language, t } = useI18n()
+  const toast = useAppStore((state) => state.toast)
 
-  const openTool = useAppStore((state) => state.openTool)
-  const openFile = useAppStore((state) => state.openFile)
-  const saveDoc = useAppStore((state) => state.saveDoc)
-  const closeTab = useAppStore((state) => state.closeTab)
-  const closeAllTabs = useAppStore((state) => state.closeAllTabs)
   const activate = useAppStore((state) => state.activate)
+  const closeTab = useAppStore((state) => state.closeTab)
   const setText = useAppStore((state) => state.setText)
   const setPaletteOpen = useAppStore((state) => state.setPaletteOpen)
-  const toggleJq = useAppStore((state) => state.toggleJq)
-  const showToast = useAppStore((state) => state.showToast)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
+  const showToast = useAppStore((state) => state.showToast)
+  const newWorkspace = useAppStore((state) => state.newWorkspace)
+  const setWorkspaceMode = useAppStore((state) => state.setWorkspaceMode)
+  const openWorkspacePanel = useAppStore((state) => state.openWorkspacePanel)
+  const closeWorkspacePanel = useAppStore((state) => state.closeWorkspacePanel)
+  const toggleWorkspacePanelMaximize = useAppStore((state) => state.toggleWorkspacePanelMaximize)
+  const focusWorkspacePanel = useAppStore((state) => state.focusWorkspacePanel)
+
+  const workspace = activeTab?.workspace
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = 'dark'
+    document.documentElement.style.colorScheme = 'dark'
+    document.documentElement.lang = settings.language
+    document.documentElement.style.setProperty('--editor-font-size', `${settings.editorFontSize}px`)
+  }, [settings.editorFontSize, settings.language])
 
   const handleFormat = useCallback(async () => {
     if (!activeDoc) return
     try {
-      const output = await formatJson(activeDoc.text, settings.formatIndent, false)
-      setText(activeDoc.id, output)
+      setText(activeDoc.id, await formatJson(activeDoc.text, settings.formatIndent, false))
       showToast('已格式化')
     } catch (error) {
       showToast(errorMessage(error))
     }
-  }, [activeDoc, setText, showToast, settings.formatIndent])
+  }, [activeDoc, setText, settings.formatIndent, showToast])
 
   const handleMinify = useCallback(async () => {
     if (!activeDoc) return
     try {
-      const output = await minifyJson(activeDoc.text)
-      setText(activeDoc.id, output)
+      setText(activeDoc.id, await minifyJson(activeDoc.text))
       showToast('已压缩')
     } catch (error) {
       showToast(errorMessage(error))
@@ -100,324 +108,185 @@ export default function App() {
     if (!activeDoc) return
     try {
       await copyText(activeDoc.text)
-      showToast('已复制到剪贴板')
+      showToast('已复制')
     } catch (error) {
       showToast(errorMessage(error))
     }
   }, [activeDoc, showToast])
 
-  const handleImport = useCallback(async () => {
-    try {
-      const file = await openTextFile()
-      if (!file) return
-      openFile(file.name, file.content)
-      showToast(`已导入 ${file.name}`)
-    } catch (error) {
-      showToast(errorMessage(error))
-    }
-  }, [openFile, showToast])
-
-  const handleSave = useCallback(async () => {
-    if (!activeDoc) return
-    try {
-      const name = await saveTextFile(activeDoc.title, activeDoc.text)
-      if (!name) return
-      saveDoc(activeDoc.id, name)
-      showToast(`已导出 ${name}`)
-    } catch (error) {
-      showToast(errorMessage(error))
-    }
-  }, [activeDoc, saveDoc, showToast])
-
-  const handleCloseActive = useCallback(() => {
-    if (!activeTab || activeTab.tool === 'welcome') return
-    closeTab(activeTab.id)
-  }, [activeTab, closeTab])
-
-  const handleOpenFromWelcome = useCallback(
-    (tool: ToolId) => {
-      openTool(tool, tool === 'json' ? { sample: true } : undefined)
-    },
-    [openTool],
-  )
-
-  useEffect(() => {
-    void notifyUiReady()
-  }, [])
-
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    setSystemDark(media.matches)
-    const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
-
-  useEffect(() => {
-    const resolved = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
-    document.documentElement.dataset.theme = resolved
-    document.documentElement.style.colorScheme = resolved
-    document.documentElement.lang = settings.language
-    document.documentElement.style.setProperty('--editor-font-size', `${settings.editorFontSize}px`)
-  }, [settings.editorFontSize, settings.language, settings.theme, systemDark])
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (!paletteOpen && activeTab?.tool === 'json' && activeTab.jqOpen) {
-          event.preventDefault()
-          toggleJq(activeTab.id)
-        }
-        return
-      }
-      if (!isModPressed(event)) return
-      const key = event.key.toLowerCase()
-      if (key === 'k') {
+      if (!activeTab) return
+      const mod = isModPressed(event)
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'p') {
         event.preventDefault()
         setPaletteOpen(!paletteOpen)
         return
       }
-      if (key === 'w') {
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
+        if (!workspace?.activePanelId) return
         event.preventDefault()
-        if (event.shiftKey) closeAllTabs()
-        else handleCloseActive()
+        toggleWorkspacePanelMaximize(activeTab.id)
         return
       }
-      if (key === 'o') {
+      if (
+        event.ctrlKey &&
+        event.altKey &&
+        (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+        workspace?.panels.length
+      ) {
         event.preventDefault()
-        void handleImport()
+        const panels = workspace.panels
+        const at = panels.findIndex((panel) => panel.id === workspace.activePanelId)
+        const next = event.key === 'ArrowRight' ? (at + 1 + panels.length) % panels.length : (at - 1 + panels.length) % panels.length
+        focusWorkspacePanel(activeTab.id, panels[next].id)
         return
       }
-      if (key === 's') {
-        event.preventDefault()
-        void handleSave()
-        return
+      if (event.altKey && !mod && !event.shiftKey) {
+        const digit = /^Digit([1-4])$/.exec(event.code)?.[1] ?? (/^[1-4]$/.test(event.key) ? event.key : null)
+        if (digit) {
+          const target = useAppStore.getState().tabs[Number(digit) - 1]
+          if (target) {
+            event.preventDefault()
+            activate(target.id)
+          }
+          return
+        }
       }
-      if (key === 'f' && event.shiftKey) {
+      if (event.key === 'Escape' && !paletteOpen && !settingsOpen && workspace?.activePanelId) {
         event.preventDefault()
-        void handleFormat()
-        return
-      }
-      if (key === 'j' && activeTab?.tool === 'json') {
-        event.preventDefault()
-        toggleJq(activeTab.id)
-        return
-      }
-      if (key === ',') {
-        event.preventDefault()
-        setSettingsOpen(true)
-        return
+        closeWorkspacePanel(activeTab.id, workspace.activePanelId)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
+    activeTab,
+    activate,
+    closeWorkspacePanel,
+    focusWorkspacePanel,
     paletteOpen,
     setPaletteOpen,
-    openTool,
-    handleCloseActive,
-    closeAllTabs,
-    handleImport,
-    handleSave,
-    handleFormat,
-    activeTab,
-    toggleJq,
-    setSettingsOpen,
-    language,
+    settingsOpen,
+    toggleWorkspacePanelMaximize,
+    workspace,
   ])
 
   const commands = useMemo<CommandItem[]>(() => {
     const items: CommandItem[] = []
+    if (!activeTab || !workspace) return items
 
-    if (activeDoc) {
+    for (const panel of PANELS) {
+      items.push({
+        id: `panel-${panel.type}`,
+        title: panel.title,
+        description: panel.description,
+        group: '面板 · 弹窗',
+        hint: '平铺',
+        icon: panel.icon,
+        run: () => openWorkspacePanel(activeTab.id, panel.type),
+      })
+    }
+
+    items.push(
+      {
+        id: 'undo',
+        title: '撤销',
+        description: '撤销当前编辑器的上一步操作',
+        group: '编辑',
+        hint: '⌘Z',
+        icon: Undo2,
+        run: requestEditorUndo,
+      },
+      {
+        id: 'toggle-mode',
+        title: workspace.mode === 'json' ? '切换到 plain 模式' : '切换到 JSON 模式',
+        description: '切换当前工作区的编辑器模式',
+        group: '编辑',
+        hint: '模式',
+        icon: AlignJustify,
+        run: () => setWorkspaceMode(activeTab.id, workspace.mode === 'json' ? 'plain' : 'json'),
+      },
+      {
+        id: 'settings',
+        title: '设置',
+        description: '编辑器字号、自动换行、快捷键与关于',
+        group: '全局',
+        hint: '⌘,',
+        icon: Settings,
+        run: () => setSettingsOpen(true),
+      },
+      {
+        id: 'new-workspace',
+        title: '新建工作区',
+        description: '创建一个新的空白编辑工作区',
+        group: '全局',
+        hint: '+',
+        icon: Plus,
+        run: newWorkspace,
+      },
+    )
+
+    if (workspace.mode === 'json' && activeDoc) {
       items.push(
         {
-          id: 'format',
-          title: t('command.format'),
-          group: t('group.actions'),
-          hint: modKey('⇧F'),
+          id: 'format-json',
+          title: '格式化 JSON',
+          description: '按设置中的缩进格式化当前文档',
+          group: '编辑',
+          hint: 'JSON',
           icon: AlignJustify,
           run: () => void handleFormat(),
         },
         {
-          id: 'minify',
-          title: t('command.minify'),
-          group: t('group.actions'),
-          hint: t('command.singleLine'),
+          id: 'minify-json',
+          title: '压缩 JSON',
+          description: '压缩为单行 JSON',
+          group: '编辑',
+          hint: 'JSON',
           icon: Minimize2,
           run: () => void handleMinify(),
         },
         {
-          id: 'copy',
-          title: t('command.copy'),
-          group: t('group.actions'),
-          hint: t('command.clipboard'),
+          id: 'copy-doc',
+          title: '复制当前文本',
+          description: '把编辑器内容复制到剪贴板',
+          group: '编辑',
+          hint: '剪贴板',
           icon: Copy,
           run: () => void handleCopy(),
         },
       )
     }
 
-    items.push(
-      {
-        id: 'settings',
-        title: t('command.settings'),
-        group: t('group.global'),
-        hint: modKey(','),
-        icon: Settings,
-        run: () => setSettingsOpen(true),
-      },
-      {
-        id: 'import',
-        title: t('command.import'),
-        group: t('group.document'),
-        hint: modKey('O'),
-        icon: FolderOpen,
-        run: () => void handleImport(),
-      },
-      {
-        id: 'export',
-        title: t('command.export'),
-        group: t('group.document'),
-        hint: modKey('S'),
-        icon: Download,
-        run: () => void handleSave(),
-      },
-    )
-
-    if (activeTab?.tool === 'json') {
-      items.push({
-        id: 'jq-panel',
-        title: t('command.jq'),
-        group: t('group.actions'),
-        hint: modKey('J'),
-        icon: Zap,
-        run: () => {
-          if (!activeTab.jqOpen) toggleJq(activeTab.id)
-        },
-      })
-    }
-
-    if (activeTab && activeTab.tool !== 'welcome') {
-      items.push(
-        {
-          id: 'close-tab',
-          title: t('command.closeTab'),
-          group: t('group.document'),
-          hint: modKey('W'),
-          icon: X,
-          run: handleCloseActive,
-        },
-        {
-          id: 'close-all-tabs',
-          title: t('command.closeAll'),
-          group: t('group.document'),
-          hint: `⇧${modKey('W')}`,
-          icon: X,
-          run: closeAllTabs,
-        },
-      )
-    }
-
-    items.push({
-      id: 'open-json',
-      title: t('command.newJson'),
-      group: t('group.openTool'),
-      icon: FileJson,
-      run: () => openTool('json'),
-    })
-
-    for (const tool of TOOLS) {
-      if (tool.id === 'json') continue
-      items.push({
-        id: `open-${tool.id}`,
-        title: toolTitle(tool.id, language),
-        group: t('group.openTool'),
-        hint: t('command.newTab'),
-        icon: tool.icon,
-        run: () =>
-          openTool(
-            tool.id,
-            tool.id === 'diff' && activeDoc ? { fromDocId: activeDoc.id } : undefined,
-          ),
-      })
-    }
-
     return items
   }, [
     activeDoc,
     activeTab,
+    handleCopy,
     handleFormat,
     handleMinify,
-    handleCopy,
-    handleImport,
-    handleSave,
-    handleCloseActive,
-    closeAllTabs,
-    openTool,
-    toggleJq,
+    newWorkspace,
+    openWorkspacePanel,
     setSettingsOpen,
-    language,
+    setWorkspaceMode,
+    workspace,
   ])
 
-  const meta = activeTab && activeTab.tool !== 'welcome' ? toolMeta(activeTab.tool) : null
+  if (!activeTab || !activeDoc || !workspace) return null
 
   return (
-    <div className="app">
+    <div className="app tiling-app">
       <TitleBar showMockTraffic={!isTauri} />
-      <TabBar onNewTab={() => setNewTabOpen(true)} />
-
-      {activeTab?.tool === 'json' && activeDoc ? (
-        <ToolHeader
-          doc={activeDoc}
-          summary={summary}
-          jqOpen={Boolean(activeTab.jqOpen)}
-          onImport={() => void handleImport()}
-          onExport={() => void handleSave()}
-          onFormat={() => void handleFormat()}
-          onMinify={() => void handleMinify()}
-          onToggleJq={() => toggleJq(activeTab.id)}
-        />
-      ) : null}
-
-      <main className="workspace">
-        {!activeTab || activeTab.tool === 'welcome' ? (
-          <WelcomeView onOpen={handleOpenFromWelcome} />
-        ) : activeTab.tool === 'json' && activeDoc ? (
-          <JsonTool key={activeTab.id} tab={activeTab} doc={activeDoc} />
-        ) : activeTab.tool === 'jq' ? (
-          <JqTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'diff' ? (
-          <DiffTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'url' ? (
-          <UrlTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'time' ? (
-          <TimeTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'codec' ? (
-          <CodecTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'regex' ? (
-          <RegexTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'qr' ? (
-          <QrTool key={activeTab.id} tab={activeTab} />
-        ) : activeTab.tool === 'pipeline' ? (
-          <PipelineTool key={activeTab.id} tab={activeTab} />
-        ) : meta ? (
-          <ComingSoon
-            title={meta.title}
-            description={meta.desc}
-            icon={meta.icon}
-            onBack={() => activate('welcome')}
-          />
-        ) : null}
+      <TabBar onNewTab={newWorkspace} />
+      <main className="workspace tiling-workspace">
+        <WorkspaceView tab={activeTab} doc={activeDoc} />
       </main>
-
       <StatusBar />
-
-      {settingsOpen ? <SettingsDialog /> : null}
-      {newTabOpen ? <NewTabPicker onClose={() => setNewTabOpen(false)} /> : null}
       {paletteOpen ? (
         <CommandPalette items={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}
+      {settingsOpen ? <SettingsDialog /> : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </div>
   )

@@ -309,7 +309,7 @@ export function QrTool({ tab }: QrToolProps) {
           {state.size}px
         </span>
         <span className="small-tool-foot-note">
-          导出由原生文件对话框完成 · 图片复制取决于 WebView 能力
+          图片复制取决于 WebView 能力
         </span>
       </footer>
     </div>

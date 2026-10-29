@@ -5,6 +5,7 @@ export interface CommandItem {
   title: string
   group: string
   hint?: string
+  description?: string
   icon?: LucideIcon
   run: () => void
 }

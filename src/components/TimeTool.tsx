@@ -63,7 +63,15 @@ export function TimeTool({ tab }: TimeToolProps) {
   }
 
   const changeMode = (mode: TimeMode) => {
-    update({ mode, input: nowFor(mode, state.unit) })
+    if (mode === state.mode) return
+    // 双向切换时尽量保留用户输入：时间戳可直接被日期解析器接受；
+    // 日期切回时间戳时转换为秒级时间戳。
+    if (mode === 'toStamp') {
+      update({ mode, input: result.ms != null ? state.input : nowFor(mode, state.unit) })
+      return
+    }
+    const next = result.ms != null ? String(Math.floor(result.ms / 1000)) : nowFor(mode, state.unit)
+    update({ mode, input: next })
   }
 
   const cards =

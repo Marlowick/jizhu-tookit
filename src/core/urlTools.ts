@@ -1,3 +1,5 @@
+import { DEFAULT_JSON_INDENT } from './jsonIndent'
+
 export interface UrlParam {
   rawKey: string
   rawValue: string
@@ -110,14 +112,14 @@ export function jsonParamInfo(value: string): JsonParamInfo | null {
       return {
         kind: 'array',
         count: parsed.length,
-        pretty: JSON.stringify(parsed, null, 2),
+        pretty: JSON.stringify(parsed, null, DEFAULT_JSON_INDENT),
       }
     }
     if (parsed && typeof parsed === 'object') {
       return {
         kind: 'object',
         count: Object.keys(parsed).length,
-        pretty: JSON.stringify(parsed, null, 2),
+        pretty: JSON.stringify(parsed, null, DEFAULT_JSON_INDENT),
       }
     }
   } catch {

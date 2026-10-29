@@ -14,15 +14,13 @@ const TABS: Array<{ id: SettingsTab; icon: typeof Settings }> = [
 ]
 
 const SHORTCUTS: Array<[string, string]> = [
-  [modKey('K'), 'settings.shortcut.command'],
-  [modKey('W'), 'settings.shortcut.closeTab'],
-  [modKey('O'), 'settings.shortcut.import'],
-  [modKey('S'), 'settings.shortcut.export'],
-  [modKey('⇧F'), 'settings.shortcut.format'],
-  [modKey('J'), 'settings.shortcut.jq'],
-  [modKey(','), 'settings.shortcut.settings'],
+  [modKey('⇧P'), 'settings.shortcut.command'],
+  [modKey('F'), 'settings.shortcut.search'],
+  [`Ctrl+Z / ${modKey('Z')}`, 'settings.shortcut.undo'],
+  [modKey('⇧F'), 'settings.shortcut.maximize'],
   ['Esc', 'settings.shortcut.escape'],
-  ['⌥↑ / ⌥↓', 'settings.shortcut.diffNav'],
+  ['Ctrl+Alt+←/→', 'settings.shortcut.panelFocus'],
+  ['Alt+1..4', 'settings.shortcut.workspaces'],
 ]
 
 export function SettingsDialog() {
@@ -91,16 +89,16 @@ export function SettingsDialog() {
                 <div className="settings-row">
                   <div>
                     <strong>{t('settings.theme.label')}</strong>
-                    <span>{t('settings.theme.desc')}</span>
+                    <span>当前版本固定使用深色工作台</span>
                   </div>
-                  <select
-                    value={settings.theme}
-                    onChange={(event) => updateSettings({ theme: event.target.value as 'light' | 'dark' | 'system' })}
-                  >
-                    <option value="light">{t('settings.theme.light')}</option>
-                    <option value="dark">{t('settings.theme.dark')}</option>
-                    <option value="system">{t('settings.theme.system')}</option>
-                  </select>
+                  <span className="settings-pill">{t('settings.theme.dark')}</span>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <strong>文本编码 / 换行</strong>
+                    <span>编辑与复制始终使用 UTF-8；状态栏显示 LF</span>
+                  </div>
+                  <span className="settings-pill">UTF-8 · LF</span>
                 </div>
                 <div className="settings-row">
                   <div>
@@ -217,7 +215,7 @@ export function SettingsDialog() {
 
           <footer className="settings-foot">
             <span>
-              {modKey(',')} {t('settings.footer.open')} · {t('settings.footer')}
+              {modKey('⇧P')} {t('settings.footer.palette')} · {t('settings.footer')}
             </span>
             <button className="btn" onClick={() => setSettingsOpen(false)}>
               {t('common.close')}

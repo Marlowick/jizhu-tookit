@@ -57,12 +57,34 @@ export interface Doc {
   rev: number
 }
 
+export type WorkspaceMode = 'plain' | 'json'
+export type WorkspacePanelType = 'jq' | 'diff' | 'qr' | 'pipeline' | 'url' | 'time' | 'regex' | 'codec'
+
+export type InputSource = 'selection' | 'tab' | 'manual'
+
+export interface WorkspacePanel {
+  id: string
+  type: WorkspacePanelType
+  source?: InputSource
+  selectionText?: string
+  seeded?: boolean
+}
+
+export interface WorkspaceState {
+  mode: WorkspaceMode
+  panels: WorkspacePanel[]
+  activePanelId: string | null
+  maximizedPanelId: string | null
+}
+
 export interface Tab {
   id: string
   tool: TabTool
   docId: string
   title: string
   instance?: number
+  workspace?: WorkspaceState
+  treeOpen?: boolean
   expanded: string[]
   jqOpen?: boolean
   jqExpr?: string

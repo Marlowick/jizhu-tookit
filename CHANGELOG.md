@@ -1,26 +1,33 @@
 # Changelog
 
-## 0.1.0 — 2026-10-25
+## Unreleased — Tiling workspace
 
-Initial public source release. macOS-first, local-only, no signed binary.
+### Added
 
-### Included
+- Numbered tiling workspaces with plain/JSON editor modes.
+- Up to three equal-width tool panels: jq, Diff, QR, Pipeline, URL, Time, Regex, Codec.
+- `⌘⇧F` maximize/restore focused panel; `Esc` close and reflow.
+- Command palette `⌘⇧P` with panel, editor and settings commands.
+- Per-panel input source selector: selection, current tab, or manual input.
+- Opening a tool captures the current editor selection as its default source; otherwise the current tab is used.
+- `Ctrl+Z` / palette undo, `⌘F` find/replace, wrap setting.
+- Dark-only workspace; UTF-8 / LF status.
+- JSON mode opens the tree by default, with a 150px minimum tree width and hide/show control.
+- JSON indent defaults to 2 spaces everywhere: editor, formatting, Diff and JSON previews.
+- URL query key/value fields are equal width.
+- URL-valued query parameters are recursively parsed and displayed up to three levels.
 
-- Tauri 2 desktop shell with custom title bar, tabs, command palette and status bar.
-- JSON tree editor (CodeMirror 6), virtualized tree, large-document degradation.
-- Data processing panel with a default jq step plus codec/regex/count steps.
-- Standalone jq tool with JSON/JSONL input and syntax reference.
-- Text / JSON / URL Diff with virtualized rows and difference navigation.
-- URL inspector, time converter, encode/decode, regex matcher/replacer.
-- QR generator with zoom preview and PNG/SVG export.
-- Two-row pipeline editor with draggable splitter, jq raw output, text workflow import/export.
-- Light/dark/system themes and zh-CN/en-US shell.
-- Local session restore, zero telemetry, minimal Tauri capabilities.
+### Changed
 
-### Known limitations
+- Brand remains jizhu / 机杼工具箱; no DevBox rename.
+- File open/save is intentionally disabled in this milestone.
+- Documentation and UI checks updated for the Tiling layout.
 
-- Source-only; no signed/notarized `.app` or auto-updater.
-- macOS only.
-- Tool-internal i18n is partial (Chinese-first).
-- Some dark-theme corners may still have hard-coded light colors.
-- Dependency advisory automation and SBOM are not part of this source release.
+### Removed
+
+- Welcome tool grid, tool-per-tab navigation and old shortcuts (`⌘K`, `⌘T`, etc.).
+- Light/system theme switch.
+
+## 0.1.0
+
+- Initial source-only release.

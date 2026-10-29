@@ -11,11 +11,13 @@ import {
   placeholder,
   type DecorationSet,
 } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { defaultKeymap, history, historyKeymap, indentWithTab, undo } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { json } from '@codemirror/lang-json'
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
+import { EDITOR_UNDO_EVENT } from '../core/editorActions'
+import { DEFAULT_JSON_INDENT } from '../core/jsonIndent'
 import type { Cursor } from '../core/types'
 
 const setErrorLine = StateEffect.define<number | null>()
@@ -119,19 +121,24 @@ interface JsonEditorProps {
   errorLine: number | null
   reveal: { pos: number; seq: number } | null
   wordWrap: boolean
+  indent?: 0 | 2 | 4
   onChange: (text: string) => void
   onCursor: (cursor: Cursor) => void
+  onSelection?: (text: string) => void
 }
 
-export function JsonEditor({ text, errorLine, reveal, wordWrap, onChange, onCursor }: JsonEditorProps) {
+export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT_JSON_INDENT, onChange, onCursor, onSelection }: JsonEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const wrapCompartment = useRef(new Compartment()).current
+  const indentCompartment = useRef(new Compartment()).current
   const onChangeRef = useRef(onChange)
   const onCursorRef = useRef(onCursor)
+  const onSelectionRef = useRef(onSelection)
 
   onChangeRef.current = onChange
   onCursorRef.current = onCursor
+  onSelectionRef.current = onSelection
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -164,7 +171,10 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, onChange, onCurs
         'on line': '行',
       }),
       wrapCompartment.of(wordWrap ? EditorView.lineWrapping : []),
-      EditorState.tabSize.of(2),
+      indentCompartment.of([
+        indentUnit.of(indent === 0 ? '\t' : ' '.repeat(indent)),
+        EditorState.tabSize.of(indent === 0 ? 4 : indent),
+      ]),
       placeholder('在这里输入或粘贴 JSON…'),
       EditorView.contentAttributes.of({ 'aria-label': 'JSON 文本编辑器' }),
       EditorView.updateListener.of((update) => {
@@ -173,9 +183,17 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, onChange, onCurs
           const head = update.state.selection.main.head
           const line = update.state.doc.lineAt(head)
           onCursorRef.current({ line: line.number, col: head - line.from + 1, pos: head })
+          const range = update.state.selection.main
+          onSelectionRef.current?.(range.empty ? '' : update.state.sliceDoc(range.from, range.to))
         }
       }),
-      keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+      keymap.of([
+        { key: 'Ctrl-z', run: undo, preventDefault: true },
+        ...searchKeymap,
+        ...defaultKeymap,
+        ...historyKeymap,
+        indentWithTab,
+      ]),
     ]
     const state = EditorState.create({ doc: text, extensions })
     const view = new EditorView({ state, parent: hostRef.current })
@@ -208,6 +226,15 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, onChange, onCurs
   }, [wordWrap, wrapCompartment])
 
   useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: indentCompartment.reconfigure([
+        indentUnit.of(indent === 0 ? '\t' : ' '.repeat(indent)),
+        EditorState.tabSize.of(indent === 0 ? 4 : indent),
+      ]),
+    })
+  }, [indent, indentCompartment])
+
+  useEffect(() => {
     const view = viewRef.current
     if (!view || !reveal) return
     const pos = Math.max(0, Math.min(reveal.pos, view.state.doc.length))
@@ -219,6 +246,17 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, onChange, onCurs
     // reveal.seq 变化时才跳转，避免同一位置重复触发
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal?.seq])
+
+  useEffect(() => {
+    const onUndo = () => {
+      const view = viewRef.current
+      if (!view) return
+      view.focus()
+      undo(view)
+    }
+    window.addEventListener(EDITOR_UNDO_EVENT, onUndo)
+    return () => window.removeEventListener(EDITOR_UNDO_EVENT, onUndo)
+  }, [])
 
   return <div className="editor-host" ref={hostRef} />
 }

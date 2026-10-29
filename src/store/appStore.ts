@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { defaultDiffState } from '../core/diff'
 import { SAMPLE_JSON } from '../core/sample'
+import { DEFAULT_JSON_INDENT } from '../core/jsonIndent'
 import { TOOL_LABEL } from '../core/tools'
 import type {
   AnalysisSummary,
   AppSettings,
   CodecToolState,
   Cursor,
+  InputSource,
   DiffState,
   Doc,
   JqEngineChoice,
@@ -20,19 +22,50 @@ import type {
   TimeToolState,
   ToolId,
   UrlToolState,
+  WorkspaceMode,
+  WorkspacePanelType,
+  WorkspaceState,
 } from '../core/types'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'system',
+  theme: 'dark',
   language: 'zh-CN',
   editorFontSize: 13,
-  formatIndent: 2,
+  formatIndent: DEFAULT_JSON_INDENT,
   wordWrap: false,
 }
 
-const WELCOME_TAB: Tab = { id: 'welcome', tool: 'welcome', docId: '', title: '欢迎', expanded: [] }
+function createWorkspace(index: number): { tab: Tab; doc: Doc } {
+  const docId = uid()
+  const tabId = uid()
+  const doc: Doc = {
+    id: docId,
+    title: `untitled-${index}`,
+    kind: 'text',
+    text: '',
+    dirty: false,
+    rev: 0,
+  }
+  const tab: Tab = {
+    id: tabId,
+    tool: 'json',
+    docId,
+    title: String(index),
+    treeOpen: true,
+    expanded: [''],
+    workspace: {
+      mode: 'plain',
+      panels: [],
+      activePanelId: null,
+      maximizedPanelId: null,
+    },
+  }
+  return { tab, doc }
+}
+
+const initialWorkspace = createWorkspace(1)
 
 function tabTitle(tool: TabTool, doc: Doc | null): string {
   if (tool === 'welcome') return '欢迎'
@@ -44,6 +77,7 @@ interface AppState {
   docs: Record<string, Doc>
   tabs: Tab[]
   activeTabId: string
+  selectionText: string
   paletteOpen: boolean
   splitRatio: number
   cursor: Cursor
@@ -53,6 +87,15 @@ interface AppState {
   toast: string | null
 
   openTool: (tool: ToolId, options?: { sample?: boolean; fromDocId?: string; diffState?: DiffState; pipelineState?: PipelineState }) => void
+  newWorkspace: () => void
+  setWorkspaceMode: (tabId: string, mode: WorkspaceMode) => void
+  setTreeOpen: (tabId: string, open: boolean) => void
+  openWorkspacePanel: (tabId: string, type: WorkspacePanelType) => void
+  closeWorkspacePanel: (tabId: string, panelId: string) => void
+  focusWorkspacePanel: (tabId: string, panelId: string) => void
+  toggleWorkspacePanelMaximize: (tabId: string) => void
+  setPanelInputSource: (tabId: string, panelId: string, source: InputSource) => void
+  markPanelSeeded: (tabId: string, panelId: string) => void
   openFile: (name: string, content: string) => void
   closeTab: (tabId: string) => void
   closeAllTabs: () => void
@@ -62,6 +105,7 @@ interface AppState {
   setPaletteOpen: (open: boolean) => void
   setSplitRatio: (ratio: number) => void
   setCursor: (cursor: Cursor) => void
+  setSelectionText: (text: string) => void
   setSummary: (summary: AnalysisSummary | null) => void
   toggleExpanded: (tabId: string, path: string) => void
   expandPaths: (tabId: string, paths: string[]) => void
@@ -87,9 +131,10 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      docs: {},
-      tabs: [WELCOME_TAB],
-      activeTabId: 'welcome',
+      docs: { [initialWorkspace.doc.id]: initialWorkspace.doc },
+      tabs: [initialWorkspace.tab],
+      activeTabId: initialWorkspace.tab.id,
+      selectionText: '',
       paletteOpen: false,
       splitRatio: 0.42,
       cursor: { line: 1, col: 1, pos: 0 },
@@ -187,23 +232,48 @@ export const useAppStore = create<AppState>()(
 
       closeTab: (tabId) =>
         set((state) => {
-          if (tabId === 'welcome') return state
           const index = state.tabs.findIndex((tab) => tab.id === tabId)
           if (index < 0) return state
           const closing = state.tabs[index]
-          const tabs = state.tabs.filter((tab) => tab.id !== tabId)
+          const remaining = state.tabs.filter((tab) => tab.id !== tabId)
+          if (!remaining.length) {
+            const created = createWorkspace(1)
+            return {
+              tabs: [created.tab],
+              docs: { [created.doc.id]: created.doc },
+              activeTabId: created.tab.id,
+              selectionText: '',
+              summary: null,
+              cursor: { line: 1, col: 1, pos: 0 },
+            }
+          }
           const docs = { ...state.docs }
-          if (closing.docId && !tabs.some((tab) => tab.docId === closing.docId)) delete docs[closing.docId]
+          if (closing.docId && !remaining.some((tab) => tab.docId === closing.docId)) delete docs[closing.docId]
           const activeTabId =
-            state.activeTabId === tabId ? (tabs[Math.max(0, index - 1)]?.id ?? 'welcome') : state.activeTabId
-          return { tabs, docs, activeTabId, summary: null }
+            state.activeTabId === tabId ? remaining[Math.max(0, index - 1)]?.id ?? remaining[0].id : state.activeTabId
+          return {
+            tabs: remaining,
+            docs,
+            activeTabId,
+            selectionText: state.activeTabId === tabId ? '' : state.selectionText,
+            summary: null,
+            cursor: state.activeTabId === tabId ? { line: 1, col: 1, pos: 0 } : state.cursor,
+          }
         }),
 
       activate: (tabId) =>
         set((state) => {
           if (!state.tabs.some((tab) => tab.id === tabId)) return state
-          return { activeTabId: tabId, paletteOpen: false, summary: null, cursor: { line: 1, col: 1, pos: 0 } }
+          return {
+            activeTabId: tabId,
+            selectionText: '',
+            paletteOpen: false,
+            summary: null,
+            cursor: { line: 1, col: 1, pos: 0 },
+          }
         }),
+
+      setSelectionText: (text) => set({ selectionText: text }),
 
       setText: (docId, text, dirty = true) =>
         set((state) => {
@@ -226,7 +296,7 @@ export const useAppStore = create<AppState>()(
         }),
 
       setPaletteOpen: (open) => set({ paletteOpen: open }),
-      setSplitRatio: (ratio) => set({ splitRatio: Math.min(0.72, Math.max(0.28, ratio)) }),
+      setSplitRatio: (ratio) => set({ splitRatio: Math.min(0.72, Math.max(0.15, ratio)) }),
       setCursor: (cursor) => set({ cursor }),
       setSummary: (summary) => set({ summary }),
 
@@ -324,14 +394,177 @@ export const useAppStore = create<AppState>()(
 
       setSettingsOpen: (open) => set({ settingsOpen: open }),
 
-      closeAllTabs: () =>
+      closeAllTabs: () => {
+        const created = createWorkspace(1)
         set({
-          tabs: [WELCOME_TAB],
-          docs: {},
-          activeTabId: 'welcome',
+          tabs: [created.tab],
+          docs: { [created.doc.id]: created.doc },
+          activeTabId: created.tab.id,
+          selectionText: '',
           summary: null,
           cursor: { line: 1, col: 1, pos: 0 },
+        })
+      },
+
+      newWorkspace: () =>
+        set((state) => {
+          const created = createWorkspace(state.tabs.length + 1)
+          return {
+            tabs: [...state.tabs, created.tab],
+            docs: { ...state.docs, [created.doc.id]: created.doc },
+            activeTabId: created.tab.id,
+            selectionText: '',
+            paletteOpen: false,
+            summary: null,
+            cursor: { line: 1, col: 1, pos: 0 },
+          }
         }),
+
+      setWorkspaceMode: (tabId, mode) =>
+        set((state) => ({
+          selectionText: '',
+          summary: null,
+          tabs: state.tabs.map((tab) =>
+            tab.id === tabId
+              ? {
+                  ...tab,
+                  treeOpen: mode === 'json' ? true : tab.treeOpen,
+                  workspace: {
+                    ...(tab.workspace ?? { panels: [], activePanelId: null, maximizedPanelId: null }),
+                    mode,
+                  },
+                }
+              : tab,
+          ),
+        })),
+
+      setTreeOpen: (tabId, open) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, treeOpen: open } : tab)),
+        })),
+
+      openWorkspacePanel: (tabId, type) => {
+        const state = get()
+        const tab = state.tabs.find((item) => item.id === tabId)
+        const workspace = tab?.workspace
+        if (!tab || !workspace) return
+        const existing = workspace.panels.find((panel) => panel.type === type)
+        if (existing) {
+          set((current) => ({
+            tabs: current.tabs.map((item) =>
+              item.id === tabId && item.workspace
+                ? { ...item, workspace: { ...item.workspace, activePanelId: existing.id, maximizedPanelId: null } }
+                : item,
+            ),
+          }))
+          return
+        }
+        if (workspace.panels.length >= 3) {
+          get().showToast('最多同时打开 3 个面板')
+          return
+        }
+        const selectionText = state.selectionText
+        const source: InputSource = selectionText.length ? 'selection' : 'tab'
+        const panel = { id: uid(), type, source, selectionText: selectionText || undefined, seeded: false }
+        set((current) => ({
+          selectionText: '',
+          tabs: current.tabs.map((item) =>
+            item.id === tabId && item.workspace
+              ? {
+                  ...item,
+                  workspace: {
+                    ...item.workspace,
+                    panels: [...item.workspace.panels, panel],
+                    activePanelId: panel.id,
+                    maximizedPanelId: null,
+                  },
+                }
+              : item,
+          ),
+        }))
+      },
+
+      closeWorkspacePanel: (tabId, panelId) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) => {
+            if (tab.id !== tabId || !tab.workspace) return tab
+            const panels = tab.workspace.panels.filter((panel) => panel.id !== panelId)
+            const activePanelId =
+              tab.workspace.activePanelId === panelId
+                ? panels[panels.length - 1]?.id ?? null
+                : tab.workspace.activePanelId
+            return {
+              ...tab,
+              workspace: {
+                ...tab.workspace,
+                panels,
+                activePanelId,
+                maximizedPanelId: tab.workspace.maximizedPanelId === panelId ? null : tab.workspace.maximizedPanelId,
+              },
+            }
+          }),
+          selectionText: state.selectionText,
+        })),
+
+      setPanelInputSource: (tabId, panelId, source) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === tabId && tab.workspace
+              ? {
+                  ...tab,
+                  workspace: {
+                    ...tab.workspace,
+                    panels: tab.workspace.panels.map((panel) =>
+                      panel.id === panelId ? { ...panel, source, seeded: false } : panel,
+                    ),
+                  },
+                }
+              : tab,
+          ),
+        })),
+
+      markPanelSeeded: (tabId, panelId) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === tabId && tab.workspace
+              ? {
+                  ...tab,
+                  workspace: {
+                    ...tab.workspace,
+                    panels: tab.workspace.panels.map((panel) =>
+                      panel.id === panelId ? { ...panel, seeded: true } : panel,
+                    ),
+                  },
+                }
+              : tab,
+          ),
+        })),
+
+      focusWorkspacePanel: (tabId, panelId) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === tabId && tab.workspace
+              ? { ...tab, workspace: { ...tab.workspace, activePanelId: panelId } }
+              : tab,
+          ),
+        })),
+
+      toggleWorkspacePanelMaximize: (tabId) =>
+        set((state) => ({
+          tabs: state.tabs.map((tab) => {
+            if (tab.id !== tabId || !tab.workspace) return tab
+            return {
+              ...tab,
+              workspace: {
+                ...tab.workspace,
+                maximizedPanelId:
+                  tab.workspace.maximizedPanelId === tab.workspace.activePanelId
+                    ? null
+                    : tab.workspace.activePanelId,
+              },
+            }
+          }),
+        })),
 
       showToast: (message) => {
         set({ toast: message })
@@ -341,7 +574,7 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: 'jizhu.session.v1',
+      name: 'jizhu.workspace.v2',
       version: 1,
       partialize: (state) => ({
         docs: state.docs,
@@ -352,15 +585,34 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AppState>
-        const tabs = Array.isArray(saved.tabs) && saved.tabs.length ? saved.tabs : [WELCOME_TAB]
-        if (!tabs.some((tab) => tab.id === 'welcome')) tabs.unshift(WELCOME_TAB)
+        const savedTabs = Array.isArray(saved.tabs) ? saved.tabs.filter((tab) => tab.workspace) : []
+        const tabs = (savedTabs.length ? savedTabs : [initialWorkspace.tab]).map((tab) =>
+          tab.workspace
+            ? {
+                ...tab,
+                treeOpen: tab.treeOpen ?? true,
+                workspace: {
+                  ...tab.workspace,
+                  panels: tab.workspace.panels.map((panel) => ({
+                    ...panel,
+                    source: panel.source ?? 'tab',
+                    seeded: panel.seeded ?? true,
+                  })),
+                },
+              }
+            : tab,
+        )
+        const docs = savedTabs.length
+          ? (saved.docs ?? {})
+          : { [initialWorkspace.doc.id]: initialWorkspace.doc }
         const activeTabId = tabs.some((tab) => tab.id === saved.activeTabId) ? saved.activeTabId! : tabs[0].id
         return {
           ...current,
           ...saved,
+          docs,
           tabs,
           activeTabId,
-          settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) },
+          settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}), theme: 'dark' },
           paletteOpen: false,
           settingsOpen: false,
           summary: null,

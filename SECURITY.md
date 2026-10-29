@@ -21,7 +21,7 @@ We aim to acknowledge reports within **72 hours** and provide a remediation plan
 In scope:
 
 - Tauri shell, capabilities, CSP, command boundary
-- JSON/tree/editor behavior and file-dialog handling
+- JSON/tree/editor behavior and paste/session handling
 - jq/jaq and regex worker sandboxing, timeouts, output caps
 - pipeline execution and workflow import validation
 - QR/export paths and clipboard behavior
@@ -36,7 +36,7 @@ Out of scope:
 ## Security model
 
 - No telemetry, no account, no network requests in the application.
-- File access only through native open/save dialogs; no fs/shell/http plugins.
+- No filesystem access from the webview; no fs/shell/http plugins.
 - jq and regex run in limited worker subprocesses.
 - Tauri capabilities are minimal (`core:default` + window drag).
 - See the source, tests and release notes for implementation details.

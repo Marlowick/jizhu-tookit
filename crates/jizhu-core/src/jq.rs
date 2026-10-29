@@ -148,9 +148,12 @@ fn format_load_errors(errors: Vec<(File<&str, ()>, jaq_core::load::Error<&str>)>
     }
 }
 
-fn format_compile_errors(
-    errors: Vec<(File<&str, ()>, Vec<(&str, jaq_core::compile::Undefined)>)>,
-) -> String {
+type CompileError<'a> = (
+    File<&'a str, ()>,
+    Vec<(&'a str, jaq_core::compile::Undefined)>,
+);
+
+fn format_compile_errors(errors: Vec<CompileError<'_>>) -> String {
     let mut parts = Vec::new();
     for (_file, items) in errors {
         for (name, undefined) in items {

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Braces, Copy, Link, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Braces, Copy, Link, Link2, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { copyText, errorMessage } from '../core/ipc'
 import {
   SAMPLE_URL,
@@ -11,6 +11,52 @@ import {
 import type { Tab } from '../core/types'
 import type { UrlParam } from '../core/urlTools'
 import { useAppStore } from '../store/appStore'
+
+const MAX_URL_DEPTH = 3
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function NestedUrlParams({ value, depth }: { value: string; depth: number }) {
+  const parsed = useMemo(() => parseUrlInput(value), [value])
+  if (!parsed.valid) return null
+  return (
+    <div className={`url-nested-block depth-${depth}`}>
+      <div className="url-nested-head">
+        <Link2 size={12} strokeWidth={1.8} />
+        <strong>嵌套 URL · 第 {depth} 层</strong>
+        <span className="url-nested-host">
+          {parsed.host}
+          {parsed.pathname}
+        </span>
+        <span className="url-nested-count">{parsed.params.length} 个参数</span>
+      </div>
+      {parsed.params.length ? (
+        <div className="url-nested-list">
+          {parsed.params.map((param, index) => (
+            <Fragment key={`${depth}-${index}-${param.key}`}>
+              <div className="url-nested-row">
+                <span className="url-nested-key">{param.key || '（空键名）'}</span>
+                <span className="url-nested-value">{param.value || '—'}</span>
+              </div>
+              {isHttpUrl(param.value) && depth < MAX_URL_DEPTH ? (
+                <NestedUrlParams value={param.value} depth={depth + 1} />
+              ) : null}
+            </Fragment>
+          ))}
+        </div>
+      ) : (
+        <div className="url-nested-empty">该 URL 没有查询参数</div>
+      )}
+    </div>
+  )
+}
 
 interface UrlToolProps {
   tab: Tab
@@ -200,7 +246,8 @@ export function UrlTool({ tab }: UrlToolProps) {
               {parsed.params.map((param, index) => {
                 const info = jsonParamInfo(param.value)
                 return (
-                  <div className="url-param-row" key={index}>
+                  <Fragment key={index}>
+                  <div className="url-param-row">
                     <input
                       className="url-param-input key"
                       value={state.decode ? param.key : param.rawKey}
@@ -244,8 +291,11 @@ export function UrlTool({ tab }: UrlToolProps) {
                       <Trash2 size={13} strokeWidth={1.8} />
                     </button>
                   </div>
-                )
-              })}
+                  {isHttpUrl(param.value) ? (
+                    <NestedUrlParams key={`${index}-${param.value}`} value={param.value} depth={1} />
+                  ) : null}
+                </Fragment>
+              )})}
               <button className="url-add-param" onClick={addParam}>
                 <Plus size={13} strokeWidth={1.8} />
                 添加参数

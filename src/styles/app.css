@@ -461,9 +461,22 @@ button {
 
 .resizer {
   position: relative;
-  flex: 0 0 1px;
-  background: var(--border);
+  z-index: 2;
+  flex: 0 0 7px;
+  margin: 0 -3px;
+  background: transparent;
   cursor: col-resize;
+}
+
+.resizer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
 }
 
 .resizer::after {
@@ -2363,7 +2376,7 @@ button {
 
 .url-param-row {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
@@ -2375,6 +2388,7 @@ button {
 }
 
 .url-param-input {
+  width: 100%;
   min-width: 0;
   height: 30px;
   padding: 0 8px;
@@ -5830,4 +5844,532 @@ body.pipeline-resizing * {
 [data-theme="dark"] .cm-search {
   background: var(--bg-panel);
   border-color: var(--border);
+}
+
+/* ============================================================
+   Tiling V2 — 深色工作区外壳
+   ============================================================ */
+
+[data-theme="dark"] {
+  --bg-app: #14161a;
+  --bg-subtle: #20242a;
+  --bg-panel: #1f2227;
+  --bg-surface: #1b1d21;
+  --border: #2b3038;
+  --border-strong: #3a404a;
+  --border-soft: #24282f;
+  --text: #d7dbe0;
+  --text-muted: #8b929c;
+  --text-faint: #656d78;
+  --accent: #6a9bc6;
+  --accent-soft: #1c2b37;
+  --accent-border: #3c617d;
+  --danger: #d8797f;
+  --danger-soft: #2d1a1d;
+  --success: #78b58b;
+  --success-soft: #1a2a20;
+  --warning: #d3a35f;
+  --warning-soft: #2a2318;
+  --syntax-key: #7fb2df;
+  --syntax-string: #9fc7a8;
+  --syntax-number: #d3a35f;
+  --syntax-bool: #d8797f;
+  --syntax-punct: #8b929c;
+  --cm-selection: #2b4052;
+  --cm-search: #3a3220;
+  --cm-search-border: #7d672f;
+}
+
+html,
+body,
+#root,
+.app,
+.tiling-app {
+  background: var(--bg-app);
+  color: var(--text);
+}
+
+.tiling-app .titlebar {
+  flex-basis: 40px;
+  height: 40px;
+  background: var(--bg-app);
+  border-color: var(--border);
+}
+
+.tiling-app .titlebar-title {
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.tiling-tabbar {
+  flex-basis: 38px;
+  height: 38px;
+  align-items: center;
+  padding: 0 10px;
+  gap: 2px;
+  background: var(--bg-app);
+  border-color: var(--border);
+  overflow: hidden;
+}
+
+.tiling-tab {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 30px;
+  max-width: 52px;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tiling-tab .tab-label {
+  flex: 0 0 auto;
+  min-width: 12px;
+  text-align: center;
+}
+
+.tiling-tab:hover {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.tiling-tab.active {
+  height: 30px;
+  margin-bottom: 0;
+  background: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.tiling-tab .tab-close {
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  color: var(--text-faint);
+}
+
+.tiling-tab:hover .tab-close,
+.tiling-tab.active .tab-close {
+  opacity: 0.8;
+}
+
+.tiling-tabbar .tab-new {
+  width: 28px;
+  height: 28px;
+  margin: 0 0 0 4px;
+  border: 1px solid transparent;
+  color: var(--text-faint);
+}
+
+.tiling-tabbar .tab-new:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.tiling-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.workspace-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.workspace-editor > .json-tool,
+.workspace-editor > .plain-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.json-tool {
+  height: 100%;
+}
+
+.plain-workspace {
+  background: var(--bg-surface);
+}
+
+.plain-editor .cm-editor {
+  height: 100%;
+}
+
+.plain-editor .cm-scroller {
+  padding-bottom: 32px;
+}
+
+/* 面板平铺 */
+.workspace-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.workspace-panels.count-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-panels.count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-panels.count-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workspace-panels.is-maximized {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+}
+
+.workspace-panel.active {
+  border-color: var(--accent-border);
+}
+
+.workspace-panel-head {
+  flex: 0 0 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.workspace-panel-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-panel-source {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.workspace-panel-source select {
+  width: 78px;
+  height: 22px;
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.workspace-panel-icon {
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px;
+  padding: 0 !important;
+  justify-content: center;
+  color: var(--text-faint) !important;
+}
+
+.workspace-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.workspace-panel-body > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+/* 面板内不再重复工具自身标题栏 */
+.workspace-panel .small-tool-head,
+.workspace-panel .jq-tool-head,
+.workspace-panel .diff-head {
+  display: none;
+}
+
+.workspace-panel .small-tool,
+.workspace-panel .jq-tool,
+.workspace-panel .diff-tool {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.workspace-panel .small-tool-foot {
+  flex: 0 0 25px;
+  height: 25px;
+}
+
+/* 状态栏 */
+.tiling-statusbar {
+  flex: 0 0 24px;
+  height: 24px;
+  padding: 0 10px;
+  border-color: var(--border);
+  background: var(--bg-app);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.tiling-statusbar .seg {
+  gap: 4px;
+}
+
+.tiling-statusbar .status-mode {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-subtle);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 命令面板 */
+.tiling-app .palette {
+  width: min(760px, 90vw);
+  max-height: 530px;
+  border-color: var(--border);
+  background: var(--bg-panel);
+  box-shadow: 0 28px 80px rgb(0 0 0 / 55%);
+}
+
+.tiling-app .palette-search {
+  height: 52px;
+  border-color: var(--border);
+}
+
+.tiling-app .palette-search input {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.tiling-app .palette-scope {
+  color: var(--text-faint);
+}
+
+.tiling-app .palette-group {
+  color: var(--text-faint);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+}
+
+.tiling-app .palette-item {
+  min-height: 36px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.tiling-app .palette-item.active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.tiling-app .palette-item .item-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tiling-app .palette-item .item-description {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tiling-app .palette-item .hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.tiling-app .palette-footer {
+  border-color: var(--border);
+  color: var(--text-faint);
+}
+
+/* 设置弹窗也跟随深色工作台 */
+.tiling-app .settings-dialog,
+.tiling-app .history-dialog {
+  background: var(--bg-panel);
+  border-color: var(--border);
+}
+
+/* 窄屏面板不强制横向撑开 */
+@media (max-width: 1100px) {
+  .workspace-panels.count-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+
+/* V2 暂不支持文件打开/保存：二维码面板仅保留复制 */
+.workspace-panel .qr-actions .btn:nth-child(1),
+.workspace-panel .qr-actions .btn:nth-child(2) {
+  display: none;
+}
+
+/* 三列平铺时，优先保证窄面板可读 */
+.workspace-panels.count-3 .time-cards {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-panels.count-3 .qr-body {
+  flex-direction: column;
+}
+
+.workspace-panels.count-3 .qr-input-pane {
+  flex: 0 0 auto;
+  border-right: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-panels.count-3 .qr-preview-pane {
+  min-height: 280px;
+}
+
+
+.json-tool .pane-icon {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  flex: 0 0 22px;
+  justify-content: center;
+  color: var(--text-faint);
+}
+
+.json-tool .pane-icon:hover {
+  color: var(--text);
+}
+
+.json-tool .tree-pane {
+  min-width: 150px;
+}
+
+
+/* URL 查询参数：key/value 等宽；值为 URL 时递归展示，最多 3 层 */
+.url-nested-block {
+  margin: 0 8px 6px;
+  padding: 7px 9px 8px;
+  border-left: 2px solid var(--accent-border);
+  border-radius: 0 5px 5px 0;
+  background: var(--bg-panel);
+}
+
+.url-nested-block.depth-3 {
+  margin-left: 18px;
+}
+
+.url-nested-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.url-nested-head strong {
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.url-nested-host {
+  overflow: hidden;
+  max-width: 45%;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-nested-count {
+  margin-left: auto;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.url-nested-list {
+  margin-top: 3px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.url-nested-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.url-nested-row:last-child {
+  border-bottom: 0;
+}
+
+.url-nested-key {
+  overflow: hidden;
+  color: var(--syntax-key);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-nested-value {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-nested-empty {
+  padding-top: 5px;
+  color: var(--text-faint);
+  font-size: 10.5px;
 }

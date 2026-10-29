@@ -6,78 +6,62 @@
 
 No account, no telemetry, no uploads. Everything runs on your machine.
 
-> **Public version 0.1.0 · internal milestone M6 · source-only**
-> macOS-first. Nine tools are available: JSON, jq, Diff, URL, Time, Codec, Regex, QR, Pipeline.
+> **Public version 0.1.0 · Tiling workspace · source-only**
+> macOS-first. The app is a dark tiling workspace with plain/JSON editors and tool panels.
 
 ## Source-only release
 
-This GitHub repository is **source-only**:
+This repository is **source-only**:
 
 - No `.app`, `.dmg`, notarized binary, or auto-updater is published.
 - The locally built debug `.app` is for development only; it is unsigned and not notarized.
-- macOS users building from source may see Gatekeeper warnings.
+- A future binary release still needs Developer ID signing, notarization, checksums, SBOM and updater signing.
 
-A future binary release still needs Developer ID signing, notarization/stapling, SHA256 checksums, SBOM, updater signing, and dependency advisory automation.
+## Tiling workspace
+
+- One tab is a **numbered workspace**, not a single tool page.
+- A workspace is a plain or JSON editor with up to **three tiled panels**.
+- Panels open from the command palette and auto-split 1 / 2 / 3 columns.
+- `⌘⇧F` maximizes the focused panel; `Esc` closes it and reflows the others.
+- `Ctrl+Alt+←/→` moves panel focus; `Alt+1..4` switches workspaces.
+- The interface is **dark-only**.
 
 ## Features
 
-- **Desktop shell**: custom title bar (macOS Overlay + native traffic lights), draggable title/tab-bar space, tabs, 24px status bar.
-- **Tabs as documents**
-  - `+` asks which tool to open instead of defaulting to JSON.
-  - Tabs shrink to fit when there are many; no horizontal scrolling.
-  - `⇧⌘W` / command palette closes all tabs.
-  - New tool tabs and same-name documents get unique names.
-- **Command palette**: `⌘K`, arrow-key navigation with automatic scroll into view, `↵` run, `esc` close.
-- **JSON editor**
-  - Tree preview + CodeMirror 6 text editor, cursor/tree sync, right-click jq path/JSON Pointer.
-  - `⌘F` opens the editor find/replace panel (case, regexp, whole word).
-  - New JSON documents are named `Untitled-1.json`, `Untitled-2.json`.
-  - Validate / format / minify / sort keys; 19-digit integer fidelity.
-  - Virtualized tree and large-document degradation.
-  - Native import/export dialogs.
-- **Data processing panel** (formerly jq panel)
-  - Opens against the current document with **step 1 = jq**.
-  - Add codec / regex / count steps, edit/delete them, run the whole chain.
-  - System jq first, built-in jaq fallback; engine/version visible.
-  - jq syntax cheat sheet; concise output; copy / single-result replace.
-  - Sandboxed worker: cleared env, empty module path, 6s timeout, 64MB output limit, 512MB memory limit.
-- **Standalone jq tool**
-  - Manual JSON or JSON Lines input, engine selection, samples.
-  - Same Rust execution boundary as the panel; built-in jq syntax cheat sheet.
-- **Diff**
-  - Text / JSON structure / URL structure.
-  - Virtualized rows, inline highlighting, collapsed equal runs.
-  - Prev/next difference arrows scroll to and flash the target row.
-  - Independent tab names (`Diff 对比`, `Diff 对比 2`).
-  - Manual input uses one 「应用」 action; dark mode covers the result area and collapsed rows.
-- **URL inspector**
-  - Protocol/host/path/query/fragment breakdown; edit, add, delete parameters.
-  - Stable parameter input keys keep focus while typing.
-  - JSON parameter detection, `JSON 编辑` → `应用`.
-  - URL update indicator after edits.
-- **Time converter**: timestamp ↔ local/UTC ISO/RFC 2822; seconds/milliseconds auto-detection.
-- **Encode / decode**: Base64 (URL-safe), URL, HTML entities, Unicode escapes, Hex; clickable center swap arrow.
-- **Regex**
-  - `fancy-regex` worker, 300ms hard timeout, ReDoS/backtracking protection.
-  - No automatic matching: edit inputs, then press `⌘F` to search manually.
-  - g/i/m, source highlight, match list, aggregate view.
-  - Clicking an aggregate result highlights all occurrences of that text.
-  - Replacement preview with `$1–$9`, `$&`, `$$`.
-  - Table-style syntax cheat sheet; dark replacement area.
-- **QR code**
-  - Runtime Canvas generation, L/M/Q/H, 240/320/400px, 2953-byte capacity check.
-  - 720px zoom preview for dense codes; PNG/SVG export.
-- **Pipeline**
-  - Row 1: input. Row 2: vertical steps on the left, result on the right.
-  - Draggable splitter between steps and result.
-  - jq raw-string (`-r`) option, friendly line-aware errors.
-  - Text-only workflow import/export (no local workflow files).
-  - Sandboxed jq/regex; local codec/count.
-- **Settings**
-  - `⌘,`: general / editor / shortcuts / about.
-  - Light / dark / system theme; font size, word wrap, JSON indent.
-  - zh-CN / en-US shell, welcome, settings, status bar and command palette.
-- **Session restore**: tabs, documents and tool state persist locally.
+- **Editor**
+  - Plain text and JSON modes; switching to JSON opens the synchronized tree by default (hide/show supported).
+  - Tree min width is 150px; JSON indent is configurable, default 2 spaces.
+  - CodeMirror 6: line numbers, search, undo/redo, selection, large-document handling.
+  - `⌘F` find/replace; `Ctrl+Z` or the command palette undoes.
+  - UTF-8 and LF displayed in the status bar; word wrap is a setting.
+  - No file open/save in this milestone — content is typed/pasted and restored locally.
+- **Command palette** (`⌘⇧P`)
+  - Open tool panels, switch JSON/plain, undo, format/minify, copy, open settings.
+  - Commands carry descriptions and are grouped.
+- **Input sources**
+  - Every tool panel has a source selector: selected text, current workspace tab, or manual input.
+  - Opening a tool snapshots the editor selection when present; otherwise it defaults to the current tab.
+- **Panels**
+  - jq query, Diff, QR, Pipeline, URL inspector, Time, Regex, Encode/decode.
+  - Diff supports text / JSON structure / URL structure; JSON indent defaults to 2 spaces.
+  - URL inspector keeps key/value fields equal width and recursively displays URL-valued query parameters up to 3 levels.
+  - Pipeline keeps jq, codec, regex and count steps; text-only workflow import/export.
+  - QR supports copy; file export is intentionally not exposed in this milestone.
+- **Settings**: dark theme fixed, editor font size, word wrap, JSON indent, language, shortcuts, about.
+- **Security**: strict CSP, `withGlobalTauri: false`, no fs/shell/http plugins, jq/regex sandboxed in worker subprocesses.
+- **Session restore**: workspace tabs, documents, panel layout and tool state persist locally.
+
+## Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘⇧P` | Command palette |
+| `⌘F` | Find / replace in editor |
+| `Ctrl+Z` / `⌘Z` | Undo |
+| `⌘⇧F` | Maximize / restore focused panel |
+| `Esc` | Close focused panel / palette / dialog |
+| `Ctrl+Alt+←/→` | Move panel focus |
+| `Alt+1..4` | Switch workspace |
 
 ## Requirements
 
@@ -105,32 +89,17 @@ open target/debug/bundle/macos/jizhu.app
 ```bash
 npm run typecheck
 npm run build
-
-cargo test -p jizhu-core        # 52 tests
-cargo test -p jizhu             # 9 + 4 worker + 3 regex worker
-
-# UI checks: start `npm run dev` first
-JIZHU_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  node scripts/mvp-check.mjs
-node scripts/jq-ui-check.mjs
-node scripts/jq-tool-check.mjs
-node scripts/diff-ui-check.mjs
-node scripts/m4-ui-check.mjs
-node scripts/regex-ui-check.mjs
-node scripts/qr-ui-check.mjs
-node scripts/pipeline-ui-check.mjs
-node scripts/settings-ui-check.mjs
-node scripts/theme-ui-check.mjs
-node scripts/i18n-ui-check.mjs
-node scripts/large-doc-check.mjs
+node scripts/tiling-ui-check.mjs   # shell, panels, tree, sources
+node scripts/feature-check.mjs     # all tool panels with mocked IPC
 ```
 
-CI runs typecheck/build, Rust tests, formatting and dependency checks; UI checks need Chrome and are documented above.
+Older `scripts/*-ui-check.mjs` target the previous single-tool layout and are kept for reference only.
 
 ## Project layout
 
 ```text
 src/                 React 19 + TypeScript UI
+src/components/workspace/  Tiling shell, panels, plain editor
 crates/jizhu-core/   Pure Rust: JSON, jq/jaq, diff, regex
 src-tauri/           Tauri shell, commands, workers, capabilities
 scripts/             UI and dependency checks
@@ -139,24 +108,17 @@ scripts/             UI and dependency checks
 ## Privacy and security
 
 - No network requests in the application; no telemetry.
-- File access is only through native open/save dialogs; no fs/shell/http plugins.
-- Strict CSP, `withGlobalTauri: false`, minimal Tauri capabilities.
+- No filesystem access from the webview; no fs/shell/http plugins.
 - jq and regex run in limited worker subprocesses.
 - Report vulnerabilities privately via [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Known limitations
 
-- macOS only; no signed/notarized binary in this repository.
-- Tool-internal i18n is still Chinese-first; shell/settings/status are bilingual.
-- Some dark-theme corners may still use light hard-coded colors.
-- URL parser uses the browser `URL` implementation; time zones are local/UTC only.
-- JSON structural Diff 'patch' is a readable structure diff, not guaranteed `git apply` input.
-- No automatic updater.
+- Tiling panels are equal-width and capped at three; no nested splits.
+- No file open/save; use paste and local session restore.
+- Regex replacement remains available inside the regex panel.
+- The older UI checks are not part of CI.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
----
-
-*机杼 (jī zhù)*: the core component of a loom. “自出机杼” means to develop one’s own style.
+[MIT](LICENSE)

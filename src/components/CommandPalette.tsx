@@ -22,9 +22,28 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return items
-    return items.filter((item) =>
-      `${item.title} ${item.hint ?? ''} ${item.group}`.toLowerCase().includes(q),
-    )
+    return items
+      .map((item) => {
+        const title = item.title.toLowerCase()
+        const description = (item.description ?? '').toLowerCase()
+        const group = item.group.toLowerCase()
+        const hint = (item.hint ?? '').toLowerCase()
+        const score = title.startsWith(q)
+          ? 0
+          : title.includes(q)
+            ? 1
+            : group.includes(q)
+              ? 2
+              : description.includes(q)
+                ? 3
+                : hint.includes(q)
+                  ? 4
+                  : -1
+        return { item, score }
+      })
+      .filter((entry) => entry.score >= 0)
+      .sort((a, b) => a.score - b.score)
+      .map((entry) => entry.item)
   }, [items, query])
 
   const indexOf = useMemo(() => new Map(filtered.map((item, index) => [item.id, index])), [filtered])
@@ -118,7 +137,12 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                       <span className="item-icon">
                         {Icon ? <Icon size={15} strokeWidth={1.6} /> : null}
                       </span>
-                      <span>{item.title}</span>
+                      <span className="item-copy">
+                        <span>{item.title}</span>
+                        {item.description ? (
+                          <span className="item-description">{item.description}</span>
+                        ) : null}
+                      </span>
                       {item.hint ? <span className="hint">{item.hint}</span> : null}
                     </div>
                   )

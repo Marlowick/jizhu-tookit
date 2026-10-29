@@ -236,6 +236,8 @@ impl<'a> SpanParser<'a> {
         }
     }
 
+    // Parser 内部一次性传入节点元数据，拆成结构体只会增加噪音。
+    #[allow(clippy::too_many_arguments)]
     fn push(
         &mut self,
         key: &str,
@@ -330,6 +332,7 @@ impl<'a> SpanParser<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn literal(
         &mut self,
         literal: &'static str,

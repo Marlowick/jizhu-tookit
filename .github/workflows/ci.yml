@@ -36,10 +36,11 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@1.93.1
         with:
-          components: rustfmt
+          components: rustfmt, clippy
       - run: npm ci
       - run: npm run build
       - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test -p jizhu-core
       - run: cargo test -p jizhu
 
@@ -64,12 +65,8 @@ jobs:
           for i in {1..40}; do
             curl -sf http://127.0.0.1:1420/ >/dev/null && break || sleep 1
           done
-          node scripts/mvp-check.mjs
-          node scripts/jq-ui-check.mjs
-          node scripts/jq-tool-check.mjs
-          node scripts/diff-ui-check.mjs
-          node scripts/regex-ui-check.mjs
-          node scripts/pipeline-ui-check.mjs
+          node scripts/tiling-ui-check.mjs
+          node scripts/feature-check.mjs
 
   audit:
     runs-on: ubuntu-latest

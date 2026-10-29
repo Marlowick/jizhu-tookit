@@ -29,10 +29,11 @@ cargo test -p jizhu
 UI checks require a running Vite server (`npm run dev`) and Chrome. Set `JIZHU_CHROME` if Chrome is not at the default macOS path:
 
 ```bash
-JIZHU_CHROME="/path/to/Chrome" node scripts/mvp-check.mjs
+JIZHU_CHROME="/path/to/Chrome" node scripts/tiling-ui-check.mjs
+JIZHU_CHROME="/path/to/Chrome" node scripts/feature-check.mjs
 ```
 
-Run the focused scripts for the area you change (jq, diff, regex, pipeline, settings, theme, i18n, QR, large documents).
+`tiling-ui-check` covers the workspace shell, panels, tree, and input sources. `feature-check` covers all tool panels with a mocked Tauri IPC layer. The older single-tool scripts are kept for reference only.
 
 ## Repository rules
 

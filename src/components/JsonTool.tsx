@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Pencil } from 'lucide-react'
+import { AlertTriangle, PanelLeftClose, PanelLeftOpen, Pencil } from 'lucide-react'
 import { JsonEditor } from '../components/JsonEditor'
 import { JsonTree } from '../components/JsonTree'
-import { JqPanel } from '../components/JqPanel'
 import { analyzeJson, copyText, errorMessage } from '../core/ipc'
 import { analysisPlan, docModeFor, formatCharCount } from '../core/largeDoc'
 import { ancestorNodes, nodeAtPosition } from '../core/tree'
@@ -24,18 +23,21 @@ export function JsonTool({ tab, doc }: JsonToolProps) {
   const splitRef = useRef<HTMLDivElement>(null)
   const revealSeq = useRef(0)
   const lastActive = useRef<string | null>(null)
+  const treeOpen = tab.treeOpen ?? true
 
   const setText = useAppStore((state) => state.setText)
   const setSummary = useAppStore((state) => state.setSummary)
   const setCursor = useAppStore((state) => state.setCursor)
+  const setSelectionText = useAppStore((state) => state.setSelectionText)
   const cursor = useAppStore((state) => state.cursor)
   const splitRatio = useAppStore((state) => state.splitRatio)
   const setSplitRatio = useAppStore((state) => state.setSplitRatio)
   const toggleExpanded = useAppStore((state) => state.toggleExpanded)
+  const setTreeOpen = useAppStore((state) => state.setTreeOpen)
   const expandPaths = useAppStore((state) => state.expandPaths)
-  const toggleJq = useAppStore((state) => state.toggleJq)
   const showToast = useAppStore((state) => state.showToast)
   const wordWrap = useAppStore((state) => state.settings.wordWrap)
+  const formatIndent = useAppStore((state) => state.settings.formatIndent)
 
   const mode = docModeFor(doc.text.length)
   const { debounceMs, maxNodes } = analysisPlan(mode)
@@ -161,7 +163,8 @@ export function JsonTool({ tab, doc }: JsonToolProps) {
   return (
     <div className="json-tool">
       <div className="split" ref={splitRef}>
-        <section className="pane" style={{ width: `${splitRatio * 100}%`, flex: '0 0 auto' }}>
+        {treeOpen ? (
+        <section className="pane tree-pane" style={{ width: `${splitRatio * 100}%`, flex: '0 0 auto', minWidth: 150 }}>
           <div className="pane-header">
             <span>树形预览</span>
             {invalid ? (
@@ -220,32 +223,42 @@ export function JsonTool({ tab, doc }: JsonToolProps) {
             />
           )}
         </section>
+        ) : null}
 
-        <div
+        {treeOpen ? <div
           className={`resizer ${dragging ? 'dragging' : ''}`}
           role="separator"
           aria-orientation="vertical"
           aria-label="调整树与编辑器的宽度"
           onPointerDown={startDrag}
-        />
+        /> : null}
 
         <section className="pane editor-pane" style={{ flex: '1 1 auto' }}>
           <div className="pane-header">
             <Pencil size={12} strokeWidth={1.8} />
             <span>文本编辑</span>
+            <button
+              className="btn ghost pane-icon"
+              onClick={() => setTreeOpen(tab.id, !treeOpen)}
+              title={treeOpen ? '隐藏树形区域' : '打开树形区域'}
+              aria-label={treeOpen ? '隐藏树形区域' : '打开树形区域'}
+            >
+              {treeOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
+            </button>
             <span className="right">{lineCount} 行 · UTF-8</span>
           </div>
           <JsonEditor
-              wordWrap={wordWrap}
+            wordWrap={wordWrap}
+            indent={formatIndent}
             text={doc.text}
             errorLine={errorLine}
             reveal={reveal}
             onChange={(value) => setText(doc.id, value)}
             onCursor={setCursor}
+            onSelection={setSelectionText}
           />
         </section>
       </div>
-      {tab.jqOpen ? <JqPanel tab={tab} doc={doc} onClose={() => toggleJq(tab.id)} /> : null}
     </div>
   )
 }

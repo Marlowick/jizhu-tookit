@@ -1,3 +1,4 @@
+import { DEFAULT_JSON_INDENT } from './jsonIndent'
 import type { DiffMode, DiffOptions, DiffState } from './types'
 
 export const DEFAULT_DIFF_OPTIONS: DiffOptions = {
@@ -6,7 +7,7 @@ export const DEFAULT_DIFF_OPTIONS: DiffOptions = {
   ignoreTrailing: false,
   sortKeys: true,
   ensureAscii: false,
-  indent: 2,
+  indent: DEFAULT_JSON_INDENT,
   decodeParams: true,
   parseJsonParams: true,
   sortParams: false,
