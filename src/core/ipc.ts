@@ -1,11 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
 import { analyzeLocally, formatLocally, minifyLocally } from './fallback'
+import type { CurlRequest, CurlResponse } from './curl'
 import type {
   Analysis,
   DiffOptions,
   DiffResult,
-  JqEngines,
-  JqEngineChoice,
   JqOutcome,
   OpenedFile,
   RegexFlags,
@@ -38,19 +37,15 @@ export async function notifyUiReady(): Promise<void> {
   }
 }
 
-export async function jqEngines(): Promise<JqEngines> {
-  if (isTauri) return invoke<JqEngines>('jq_engines')
-  return { system: null, jaq: { version: '3.1' } }
+
+export async function curlRequest(request: CurlRequest): Promise<CurlResponse> {
+  if (!isTauri) throw new Error('浏览器预览不支持网络请求，请使用桌面端打开')
+  return invoke<CurlResponse>('curl_request', { request })
 }
 
-export async function jqRun(
-  input: string,
-  program: string,
-  engine: JqEngineChoice,
-  raw = false,
-): Promise<JqOutcome> {
+export async function jqRun(input: string, program: string, raw = false): Promise<JqOutcome> {
   if (!isTauri) throw new Error('浏览器预览不支持 jq 执行，请使用桌面端')
-  return invoke<JqOutcome>('jq_run', { input, program, engine, raw })
+  return invoke<JqOutcome>('jq_run', { input, program, raw })
 }
 
 function diffUnavailable(): never {

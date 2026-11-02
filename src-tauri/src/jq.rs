@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
@@ -15,30 +14,7 @@ const MAX_OUTPUT: usize = 64 * 1024 * 1024;
 const MAX_WORKER_REQUEST: usize = 64 * 1024 * 1024;
 const MAX_STDERR: usize = 64 * 1024;
 const MAX_PROGRAM: usize = 1024 * 1024;
-const MAX_SYSTEM_JQ_BYTES: u64 = 50 * 1024 * 1024;
 const RUN_TIMEOUT: Duration = Duration::from_secs(6);
-const VERSION_TIMEOUT: Duration = Duration::from_secs(2);
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemJq {
-    pub path: String,
-    pub version: String,
-    pub sha256: String,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JaqEngine {
-    pub version: String,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EngineInfo {
-    pub system: Option<SystemJq>,
-    pub jaq: JaqEngine,
-}
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,23 +51,13 @@ pub(crate) struct LimitedOutput {
     pub(crate) output_limit: bool,
 }
 
-pub fn engines() -> EngineInfo {
-    EngineInfo {
-        system: detect_system_jq(),
-        jaq: JaqEngine {
-            version: jizhu_core::jq::JAQ_VERSION.to_string(),
-        },
-    }
-}
-
-pub fn run(input: String, program: String, engine: Option<String>, raw: bool) -> JqOutcome {
+pub fn run(input: String, program: String, raw: bool) -> JqOutcome {
     let started = Instant::now();
-    let choice = engine.unwrap_or_else(|| "auto".to_string());
 
     if input.len() > MAX_INPUT {
         return failure(
-            "auto",
-            "限制",
+            "jaq",
+            "内置 jaq",
             "",
             "输入超过 32MB，jq 面板暂不处理这么大的文档",
             "limit",
@@ -99,36 +65,13 @@ pub fn run(input: String, program: String, engine: Option<String>, raw: bool) ->
         );
     }
     if program.len() > MAX_PROGRAM {
-        return failure("auto", "限制", "", "表达式过长", "limit", started);
+        return failure("jaq", "内置 jaq", "", "表达式过长", "limit", started);
     }
     if program.trim().is_empty() {
-        return failure("auto", "输入", "", "请输入 jq 表达式", "input", started);
+        return failure("jaq", "内置 jaq", "", "请输入 jq 表达式", "input", started);
     }
 
-    let system = detect_system_jq();
-
-    if choice == "system" {
-        let Some(jq) = system else {
-            return failure(
-                "system",
-                "系统 jq",
-                "",
-                "未检测到可用的系统 jq。可以安装 jq（brew install jq），或切换到内置 jaq。",
-                "engine",
-                started,
-            );
-        };
-        return run_system(&jq, &input, &program, raw, started);
-    }
-
-    if choice == "jaq" {
-        return run_jaq(&input, &program, raw, started);
-    }
-
-    match system {
-        Some(jq) => run_system(&jq, &input, &program, raw, started),
-        None => run_jaq(&input, &program, raw, started),
-    }
+    run_jaq(&input, &program, raw, started)
 }
 
 fn failure(
@@ -152,73 +95,6 @@ fn failure(
         }),
         truncated: false,
     }
-}
-
-fn run_system(jq: &SystemJq, input: &str, program: &str, raw: bool, started: Instant) -> JqOutcome {
-    let label = format!("系统 jq {}", jq.version.trim_start_matches("jq-"));
-    let dir = match make_temp_dir() {
-        Ok(dir) => dir,
-        Err(error) => {
-            return failure(
-                "system",
-                &label,
-                &jq.version,
-                &format!("无法创建临时目录：{error}"),
-                "io",
-                started,
-            )
-        }
-    };
-    let modules = dir.join("modules");
-    if let Err(error) = fs::create_dir(&modules) {
-        let _ = fs::remove_dir_all(&dir);
-        return failure(
-            "system",
-            &label,
-            &jq.version,
-            &format!("无法创建临时目录：{error}"),
-            "io",
-            started,
-        );
-    }
-    let filter_path = dir.join("filter");
-    if let Err(error) = fs::write(&filter_path, program) {
-        let _ = fs::remove_dir_all(&dir);
-        return failure(
-            "system",
-            &label,
-            &jq.version,
-            &format!("无法写入表达式：{error}"),
-            "io",
-            started,
-        );
-    }
-
-    let mut command = Command::new(&jq.path);
-    command.arg("--compact-output");
-    if raw {
-        command.arg("-r");
-    }
-    command.arg("-L").arg(&modules).arg("-f").arg(&filter_path);
-
-    let result = run_limited(command, input.as_bytes(), RUN_TIMEOUT, MAX_OUTPUT, &dir);
-    let _ = fs::remove_dir_all(&dir);
-
-    let output = match result {
-        Ok(output) => output,
-        Err(error) => {
-            return failure(
-                "system",
-                &label,
-                &jq.version,
-                &format!("无法启动 jq：{error}"),
-                "io",
-                started,
-            )
-        }
-    };
-
-    finish_outcome("system", &label, &jq.version, output, started)
 }
 
 fn run_jaq(input: &str, program: &str, raw: bool, started: Instant) -> JqOutcome {
@@ -522,11 +398,13 @@ unsafe fn apply_rlimits() {
 }
 
 pub(crate) fn make_temp_dir() -> io::Result<PathBuf> {
+    static SEQ: AtomicU64 = AtomicU64::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let path = std::env::temp_dir().join(format!("jizhu-jq-{}-{nanos}", std::process::id()));
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!("jizhu-jq-{}-{nanos}-{seq}", std::process::id()));
     fs::create_dir(&path)?;
     #[cfg(unix)]
     {
@@ -536,149 +414,36 @@ pub(crate) fn make_temp_dir() -> io::Result<PathBuf> {
     Ok(path)
 }
 
-fn detect_system_jq() -> Option<SystemJq> {
-    let candidates = [
-        PathBuf::from("/usr/bin/jq"),
-        PathBuf::from("/opt/homebrew/bin/jq"),
-        PathBuf::from("/usr/local/bin/jq"),
-    ];
-    for candidate in candidates {
-        if let Some(found) = inspect_jq(&candidate) {
-            return Some(found);
-        }
-    }
-    None
-}
-
-fn inspect_jq(path: &Path) -> Option<SystemJq> {
-    let metadata = fs::metadata(path).ok()?;
-    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_SYSTEM_JQ_BYTES {
-        return None;
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        let mode = metadata.mode();
-        if mode & 0o111 == 0 || mode & 0o002 != 0 {
-            return None;
-        }
-        let euid = unsafe { libc::geteuid() };
-        if metadata.uid() != 0 && metadata.uid() != euid {
-            return None;
-        }
-    }
-
-    let path = fs::canonicalize(path).ok()?;
-    let version = read_version(&path)?;
-    let sha256 = hash_file(&path)?;
-    Some(SystemJq {
-        path: path.display().to_string(),
-        version,
-        sha256,
-    })
-}
-
-fn read_version(path: &Path) -> Option<String> {
-    let dir = make_temp_dir().ok()?;
-    let mut command = Command::new(path);
-    command.arg("--version");
-    let result = run_limited(command, b"", VERSION_TIMEOUT, 4096, &dir);
-    let _ = fs::remove_dir_all(&dir);
-    let output = result.ok()?;
-    if !output.status?.success() {
-        return None;
-    }
-    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    version.starts_with("jq-").then_some(version)
-}
-
-fn hash_file(path: &Path) -> Option<String> {
-    let mut file = fs::File::open(path).ok()?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
-    loop {
-        let count = file.read(&mut buffer).ok()?;
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
-    }
-    Some(format!("{:x}", hasher.finalize()))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn detects_system_jq_on_macos() {
-        if !Path::new("/usr/bin/jq").exists() && !Path::new("/opt/homebrew/bin/jq").exists() {
-            return;
-        }
-        let info = detect_system_jq().expect("jq should be detected");
-        assert!(info.version.starts_with("jq-"));
-        assert_eq!(info.sha256.len(), 64);
-    }
-
-    #[test]
-    fn system_jq_runs_filter() {
-        if detect_system_jq().is_none() {
-            return;
-        }
-        let outcome = run(
-            r#"{"users":[{"age":17},{"age":30}]}"#.to_string(),
-            ".users[] | select(.age > 18)".to_string(),
-            Some("system".to_string()),
-            false,
-        );
-        assert!(outcome.error.is_none(), "{:?}", outcome.error);
-        assert_eq!(outcome.count, 1);
-        assert!(outcome.output.contains("\"age\": 30"));
-    }
-
-    #[test]
-    fn system_jq_handles_json_lines() {
-        if detect_system_jq().is_none() {
-            return;
-        }
-        let outcome = run(
-            "{\"user\":\"ada\"}\n{\"user\":\"bob\"}".to_string(),
-            ".user".to_string(),
-            Some("system".to_string()),
-            false,
-        );
-        assert!(outcome.error.is_none(), "{:?}", outcome.error);
-        assert_eq!(outcome.count, 2);
-        assert!(outcome.output.contains("ada"));
-        assert!(outcome.output.contains("bob"));
-    }
-
-    #[test]
-    fn system_jq_raw_unquotes_strings() {
-        if detect_system_jq().is_none() {
-            return;
-        }
-        let outcome = run(
-            r#"{"payload":"abc"}"#.to_string(),
-            ".payload".to_string(),
-            Some("system".to_string()),
-            true,
-        );
-        assert!(outcome.error.is_none(), "{:?}", outcome.error);
-        assert_eq!(outcome.output, "abc");
-    }
-
-    #[test]
     fn rejects_oversized_input() {
-        let outcome = run("x".repeat(MAX_INPUT + 1), ".".to_string(), None, false);
+        let outcome = run("x".repeat(MAX_INPUT + 1), ".".to_string(), false);
         assert_eq!(outcome.error.expect("error").kind, "limit");
     }
 
     #[test]
     fn empty_program_is_rejected() {
-        let outcome = run("{}".to_string(), "   ".to_string(), None, false);
+        let outcome = run("{}".to_string(), "   ".to_string(), false);
         assert_eq!(outcome.error.expect("error").kind, "input");
+    }
+
+    #[test]
+    fn pretty_lines_counts_output_values_not_rendered_lines() {
+        // worker 每个输出值是一行紧凑 JSON；pretty 展开成多行后计数仍应为值的数量
+        let stdout = b"{\"user\":\"ada\",\"score\":91}\n{\"user\":\"coco\",\"score\":88}\n";
+        let (pretty, count) = pretty_lines(stdout);
+        assert_eq!(count, 2);
+        assert!(pretty.lines().count() > 2);
+    }
+
+    #[test]
+    fn pretty_lines_passes_through_raw_text() {
+        let (pretty, count) = pretty_lines(b"hello\nworld\n");
+        assert_eq!(count, 2);
+        assert_eq!(pretty, "hello\nworld");
     }
 
     #[test]

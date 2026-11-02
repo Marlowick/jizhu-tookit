@@ -104,7 +104,7 @@ export async function executePipelineStep(
   const started = performance.now()
   let output = ''
   if (step.type === 'jq') {
-    const outcome = await jqRun(input, step.expr ?? '.', 'auto', step.raw !== false)
+    const outcome = await jqRun(input, step.expr ?? '.', step.raw !== false)
     if (outcome.error) throw new Error(outcome.error.message)
     output = outcome.output
   } else if (step.type === 'codec') {
@@ -139,7 +139,6 @@ export function serializeWorkflow(state: PipelineState): string {
     {
       version: 1,
       name: state.name,
-      input: state.input,
       steps: state.steps,
     },
     null,

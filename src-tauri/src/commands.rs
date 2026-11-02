@@ -1,3 +1,4 @@
+use crate::curl;
 use crate::jq;
 use jizhu_core::diff::{self, DiffError, DiffOptions, DiffResult, UrlDiffResult};
 use jizhu_core::json::{self, Analysis, JsonError};
@@ -199,22 +200,21 @@ pub async fn regex_run(text: String, pattern: String, flags: RegexFlags) -> Rege
 }
 
 #[tauri::command]
-pub fn jq_engines() -> jq::EngineInfo {
-    jq::engines()
+pub async fn curl_request(request: curl::CurlRequest) -> Result<curl::CurlResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || curl::run(request))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
 pub async fn jq_run(
     input: String,
     program: String,
-    engine: Option<String>,
     raw: Option<bool>,
 ) -> Result<jq::JqOutcome, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        jq::run(input, program, engine, raw.unwrap_or(false))
-    })
-    .await
-    .map_err(|error| error.to_string())
+    tauri::async_runtime::spawn_blocking(move || jq::run(input, program, raw.unwrap_or(false)))
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

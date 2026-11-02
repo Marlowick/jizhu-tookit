@@ -1,32 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Asterisk, BookOpen, Copy, LocateFixed, Play } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { ArrowDown, ArrowUp, ArrowUpDown, BookOpen, Copy, LocateFixed, Play } from 'lucide-react'
 import { copyText, errorMessage, isTauri, regexRun } from '../core/ipc'
-import { isModPressed } from '../core/keyboard'
-import { SAMPLE_REGEX_PATTERN, SAMPLE_REGEX_TEXT } from '../core/sample'
-import type { RegexMatch, RegexOutcome, RegexState, Tab } from '../core/types'
+import { isModPressed, modKey } from '../core/keyboard'
+import type { EditorHighlights, RegexMatch, RegexOutcome, RegexState, Tab } from '../core/types'
 import { useAppStore } from '../store/appStore'
 
 interface RegexToolProps {
   tab: Tab
-}
-
-interface Segment {
-  text: string
-  match: number | null
-}
-
-function highlightSegments(text: string, matches: RegexMatch[]): Segment[] {
-  const segments: Segment[] = []
-  let cursor = 0
-  matches.forEach((match, index) => {
-    const start = Math.max(cursor, Math.min(match.start, text.length))
-    const end = Math.max(start, Math.min(match.end, text.length))
-    if (start > cursor) segments.push({ text: text.slice(cursor, start), match: null })
-    if (end > start) segments.push({ text: text.slice(start, end), match: index })
-    cursor = end
-  })
-  if (cursor < text.length) segments.push({ text: text.slice(cursor), match: null })
-  return segments
+  docId: string
+  embedded?: boolean
+  source?: string
+  onSourceChange?: (text: string) => void
 }
 
 function expandReplacement(template: string, match: RegexMatch): string {
@@ -68,15 +53,7 @@ function buildReplacement(text: string, matches: RegexMatch[], template: string)
   return output
 }
 
-function Check({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
     <label className="diff-check">
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
@@ -85,446 +62,428 @@ function Check({
   )
 }
 
-export function RegexTool({ tab }: RegexToolProps) {
+function MatchList({
+  matches,
+  current,
+  onFocus,
+  onCopy,
+}: {
+  matches: RegexMatch[]
+  current: number | null
+  onFocus: (index: number) => void
+  onCopy: (text: string) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: matches.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
+  })
+
+  return (
+    <div className="regex-results regex-match-scroll" ref={scrollRef}>
+      <div className="regex-virtual-inner" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const match = matches[item.index]
+          if (!match) return null
+          const active = current === item.index
+          return (
+            <div
+              key={`${match.start}-${item.index}`}
+              className={`regex-match-row ${active ? 'current' : ''}`}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: item.size, transform: `translateY(${item.start}px)` }}
+            >
+              <button className="regex-match-main" onClick={() => onFocus(item.index)} title={match.groups.filter(Boolean).join(' · ')}>
+                <span className="regex-match-index">match{item.index + 1}</span>
+                <span className="regex-match-range">{match.start}-{match.end}</span>
+                <span className="regex-match-text">{match.text || '（空匹配）'}</span>
+              </button>
+              <button className="btn ghost regex-copy" onClick={() => onCopy(match.text)} title="复制匹配">
+                <Copy size={12} strokeWidth={1.8} />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+type SortKey = 'result' | 'count'
+type SortDir = 'asc' | 'desc'
+
+function AggregateList({ matches, onFocus }: { matches: RegexMatch[]; onFocus: (index: number) => void }) {
+  const [sortKey, setSortKey] = useState<SortKey>('count')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const rows = useMemo(() => {
+    const map = new Map<string, { count: number; firstIndex: number }>()
+    matches.forEach((match, index) => {
+      const existing = map.get(match.text)
+      if (existing) existing.count += 1
+      else map.set(match.text, { count: 1, firstIndex: index })
+    })
+    const result = [...map.entries()].map(([text, info]) => ({ text, ...info }))
+    const direction = sortDir === 'asc' ? 1 : -1
+    return result.sort((left, right) => {
+      if (sortKey === 'result') return direction * left.text.localeCompare(right.text)
+      return direction * (left.count - right.count) || left.text.localeCompare(right.text)
+    })
+  }, [matches, sortDir, sortKey])
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 34,
+    overscan: 10,
+  })
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortKey(key)
+      setSortDir(key === 'count' ? 'desc' : 'asc')
+    }
+  }
+
+  const arrow = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown size={11} strokeWidth={1.8} />
+    return sortDir === 'asc' ? <ArrowUp size={11} strokeWidth={1.8} /> : <ArrowDown size={11} strokeWidth={1.8} />
+  }
+
+  return (
+    <div className="regex-aggregate-view">
+      <div className="regex-aggregate-head">
+        <button onClick={() => toggleSort('result')}>结果 {arrow('result')}</button>
+        <button onClick={() => toggleSort('count')}>数量 {arrow('count')}</button>
+        <span>占比</span>
+      </div>
+      <div className="regex-results regex-aggregate-scroll" ref={scrollRef}>
+        <div className="regex-virtual-inner" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((item) => {
+            const row = rows[item.index]
+            if (!row) return null
+            return (
+              <button
+                key={row.text}
+                className="regex-aggregate-row"
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: item.size, transform: `translateY(${item.start}px)` }}
+                onClick={() => onFocus(row.firstIndex)}
+                title={row.text}
+              >
+                <span className="regex-aggregate-text">{row.text || '（空匹配）'}</span>
+                <span className="regex-aggregate-count">{row.count}</span>
+                <span className="regex-aggregate-percent">{((row.count / Math.max(1, matches.length)) * 100).toFixed(1)}%</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReplaceView({
+  count,
+  template,
+  onTemplateChange,
+  output,
+  onGenerate,
+  onApply,
+  onCopy,
+}: {
+  count: number
+  template: string
+  onTemplateChange: (value: string) => void
+  output: string | null
+  onGenerate: () => void
+  onApply: () => void
+  onCopy: () => void
+}) {
+  return (
+    <div className="regex-replace-pane">
+      <div className="regex-replace-controls">
+        <span>替换为</span>
+        <input
+          className="regex-replace-input"
+          value={template}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="$1 [at] $2"
+          onChange={(event) => onTemplateChange(event.target.value)}
+        />
+        <span className="regex-replace-hint">$1–$9 · $&amp; · $$</span>
+        <button className="btn primary" onClick={onGenerate} disabled={count === 0}>
+          <Play size={12} strokeWidth={1.8} />
+          生成替换
+        </button>
+      </div>
+      {output == null ? (
+        <div className="regex-empty">修改模板后点击“生成替换”；不会自动执行。</div>
+      ) : (
+        <>
+          <div className="regex-replace-actions">
+            <span>{count} 处替换 · UTF-8</span>
+            <button className="btn ghost" onClick={onCopy}>
+              <Copy size={12} strokeWidth={1.8} />
+              复制结果
+            </button>
+            <button className="btn" onClick={onApply} disabled={count === 0}>
+              应用到左侧编辑器
+            </button>
+          </div>
+          <pre className="regex-replace-preview">{output}</pre>
+        </>
+      )}
+    </div>
+  )
+}
+
+export function RegexTool({ tab, docId, embedded = false, source, onSourceChange }: RegexToolProps) {
   const setRegexTool = useAppStore((state) => state.setRegexTool)
   const showToast = useAppStore((state) => state.showToast)
+  const setEditorHighlights = useAppStore((state) => state.setEditorHighlights)
+  const editorHighlights = useAppStore((state) => state.editorHighlights)
   const state: RegexState = {
-    text: SAMPLE_REGEX_TEXT,
-    pattern: SAMPLE_REGEX_PATTERN,
+    text: '',
+    pattern: '',
     global: true,
     ignoreCase: false,
     multiLine: false,
     replace: '$1 [at] $2',
     view: 'matches',
     ...tab.regexTool,
+    ...(embedded && source !== undefined ? { text: source } : {}),
   }
-
+  const inputText = embedded && source !== undefined ? source : state.text
   const [result, setResult] = useState<RegexOutcome | null>(null)
   const [running, setRunning] = useState(false)
-  const [browserError, setBrowserError] = useState<string | null>(null)
-  const [activeText, setActiveText] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [current, setCurrent] = useState<number | null>(null)
+  const [replaceOutput, setReplaceOutput] = useState<string | null>(null)
   const requestId = useRef(0)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const highlightRef = useRef<HTMLPreElement>(null)
+  const seqRef = useRef(0)
 
-  const update = (patch: Partial<RegexState>) => setRegexTool(tab.id, { ...state, ...patch })
-
-  useEffect(() => {
-    requestId.current += 1
-    setRunning(false)
-    setResult(null)
-    setActiveText(null)
-  }, [state.text, state.pattern, state.global, state.ignoreCase, state.multiLine])
-
-  const run = async (next: RegexState = state) => {
-    if (!isTauri) {
-      setBrowserError('浏览器预览不支持正则 worker，请使用桌面端打开')
+  const update = (patch: Partial<RegexState>) => {
+    if (embedded && patch.text !== undefined) {
+      onSourceChange?.(patch.text)
       return
     }
-    if (!next.pattern.trim()) {
+    setRegexTool(tab.id, { ...state, ...patch })
+  }
+
+  const clearHighlights = () => {
+    setCurrent(null)
+    if (embedded) setEditorHighlights(null)
+  }
+
+  const pushHighlights = (matches: RegexMatch[], currentIndex: number | null) => {
+    if (!embedded) return
+    seqRef.current += 1
+    const next: EditorHighlights = {
+      docId,
+      ranges: matches.map((match) => ({ from: match.start, to: match.end })),
+      current: currentIndex,
+      seq: seqRef.current,
+    }
+    setEditorHighlights(next)
+  }
+
+  const run = async () => {
+    if (!isTauri) {
+      setError('浏览器预览不支持正则 worker，请使用桌面端打开')
+      return
+    }
+    if (!state.pattern.trim()) {
       setResult(null)
-      setBrowserError(null)
+      clearHighlights()
       return
     }
     const id = ++requestId.current
     setRunning(true)
-    setBrowserError(null)
+    setError(null)
+    setReplaceOutput(null)
+    setCurrent(null)
     try {
-      const outcome = await regexRun(next.text, next.pattern, {
-        global: next.global,
-        ignoreCase: next.ignoreCase,
-        multiLine: next.multiLine,
+      const outcome = await regexRun(inputText, state.pattern, {
+        global: state.global,
+        ignoreCase: state.ignoreCase,
+        multiLine: state.multiLine,
       })
       if (id !== requestId.current) return
       setResult(outcome)
-    } catch (error) {
+      clearHighlights()
+      if (!outcome.error) pushHighlights(outcome.matches, null)
+    } catch (caught) {
       if (id !== requestId.current) return
-      setBrowserError(errorMessage(error))
+      setError(errorMessage(caught))
       setResult(null)
+      clearHighlights()
     } finally {
       if (id === requestId.current) setRunning(false)
     }
   }
 
+  // 左侧内容或表达式/选项变化后，旧结果与高亮立即失效
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!isModPressed(event)) return
-      if (event.key.toLowerCase() !== 'f') return
-      event.preventDefault()
-      void run()
+    requestId.current += 1
+    setResult(null)
+    setError(null)
+    setReplaceOutput(null)
+    clearHighlights()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputText, state.pattern, state.global, state.ignoreCase, state.multiLine, embedded])
+
+  useEffect(() => {
+    return () => {
+      if (embedded) setEditorHighlights(null)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [state])
+  }, [embedded, setEditorHighlights])
 
-  const segments = useMemo(
-    () => highlightSegments(state.text, result?.matches ?? []),
-    [state.text, result],
-  )
-
-  const aggregate = useMemo(() => {
-    const map = new Map<string, { count: number; first: RegexMatch }>()
-    for (const match of result?.matches ?? []) {
-      const existing = map.get(match.text)
-      if (existing) existing.count += 1
-      else map.set(match.text, { count: 1, first: match })
-    }
-    return [...map.entries()]
-      .map(([text, info]) => ({ text, ...info }))
-      .sort((left, right) => right.count - left.count || left.text.localeCompare(right.text))
-  }, [result])
-
-  const maxAggregate = Math.max(1, ...aggregate.map((item) => item.count))
-
-  const replacement = useMemo(
-    () => ({
-      text: buildReplacement(state.text, result?.matches ?? [], state.replace),
-      count: result?.matches.length ?? 0,
-    }),
-    [state.text, state.replace, result],
-  )
-
-  const applyReplacement = () => {
-    if (!result || !result.matches.length) return
-    update({ text: replacement.text, view: 'matches' })
-    showToast(`已应用 ${result.matches.length} 处替换`)
+  const focusMatch = (index: number) => {
+    setCurrent(index)
+    const match = result?.matches[index]
+    if (!match) return
+    pushHighlights(result?.matches ?? [], index)
   }
 
-  const locate = (match: RegexMatch) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-    textarea.focus()
-    textarea.setSelectionRange(match.start, match.end)
+  const aggregateCount = result?.unique ?? 0
+
+  const generateReplacement = () => {
+    if (!result) return
+    setReplaceOutput(buildReplacement(inputText, result.matches, state.replace))
+  }
+
+  const applyReplacement = () => {
+    if (replaceOutput == null) return
+    if (embedded) onSourceChange?.(replaceOutput)
+    else update({ text: replaceOutput, view: 'matches' })
+    showToast(`已应用 ${result?.matches.length ?? 0} 处替换`)
+    setReplaceOutput(null)
+    clearHighlights()
   }
 
   const copy = async (text: string, label: string) => {
     try {
       await copyText(text)
       showToast(`已复制${label}`)
-    } catch (error) {
-      showToast(errorMessage(error))
+    } catch (caught) {
+      showToast(errorMessage(caught))
     }
   }
 
   const flags = `${state.global ? 'g' : ''}${state.ignoreCase ? 'i' : ''}${state.multiLine ? 'm' : ''}`
-  const error = result?.error ?? (browserError ? { message: browserError, kind: 'browser' } : null)
-  const lineCount = state.text ? state.text.split('\n').length : 0
+  const view = state.view
+  const total = result?.matches.length ?? 0
+  const currentRanges = editorHighlights?.docId === docId ? editorHighlights : null
 
   return (
-    <div className="small-tool regex-tool">
-      <header className="small-tool-head">
-        <Asterisk size={15} strokeWidth={1.8} color="#2563eb" />
-        <strong>正则匹配</strong>
-        <span className="small-tool-sub">高亮 · 分组 · 聚合</span>
-        <span className="small-tool-hint">⌘F 手动搜索 · worker 300ms 硬超时</span>
-      </header>
-
-      <div className="regex-body">
-        <section className="regex-source-pane">
-          <div className="regex-pane-head">
-            <span>原文本</span>
-            <span>
-              {lineCount} 行 · {state.text.length} 字符
-            </span>
-            <span className="regex-head-note">
-              {activeText
-                ? `同类「${activeText}」共 ${result?.matches.filter((match) => match.text === activeText).length ?? 0} 处已高亮`
-                : '匹配内容以蓝色高亮'}
-            </span>
-          </div>
-          <div className="regex-source-wrap">
-            <pre className="regex-highlight" ref={highlightRef} aria-hidden="true">
-              {segments.map((segment, index) =>
-                segment.match == null ? (
-                  <span key={index}>{segment.text}</span>
-                ) : (
-                  <mark
-                    key={index}
-                    className={activeText != null && segment.text === activeText ? 'active' : ''}
-                  >
-                    {segment.text}
-                  </mark>
-                ),
-              )}
-            </pre>
-            <textarea
-              ref={textareaRef}
-              className="regex-source"
-              value={state.text}
-              spellCheck={false}
-              autoComplete="off"
-              onChange={(event) => update({ text: event.target.value })}
-              onScroll={(event) => {
-                if (!highlightRef.current) return
-                highlightRef.current.scrollTop = event.currentTarget.scrollTop
-                highlightRef.current.scrollLeft = event.currentTarget.scrollLeft
-              }}
-            />
-          </div>
-        </section>
-
-        <section className="regex-result-pane">
-          <div className="regex-pattern-row">
-            <span className="regex-pattern-label">expr</span>
-            <input
-              className="regex-pattern"
-              value={state.pattern}
-              spellCheck={false}
-              autoComplete="off"
-              placeholder="(\w+)@([\w.-]+)"
-              onChange={(event) => update({ pattern: event.target.value })}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  void run()
-                }
-              }}
-            />
-            <button className={`btn ghost ${helpOpen ? 'active' : ''}`} onClick={() => setHelpOpen((open) => !open)}>
-              <BookOpen size={13} strokeWidth={1.8} />
-              语法
-            </button>
-            <button className="btn primary" onClick={() => void run()} disabled={running || !isTauri}>
-              <Play size={13} strokeWidth={1.8} />
-              {running ? '匹配中…' : '执行'}
-            </button>
-          </div>
-
-          <div className="regex-flags-row">
-            <Check label="g 全局" checked={state.global} onChange={(checked) => update({ global: checked })} />
-            <Check
-              label="i 忽略大小写"
-              checked={state.ignoreCase}
-              onChange={(checked) => update({ ignoreCase: checked })}
-            />
-            <Check
-              label="m 多行"
-              checked={state.multiLine}
-              onChange={(checked) => update({ multiLine: checked })}
-            />
-            <span className="regex-flags">{flags || '无选项'}</span>
-          </div>
-
-          <div className="regex-replace-row">
-            <span>替换为</span>
-            <input
-              className="regex-replace-input"
-              value={state.replace}
-              spellCheck={false}
-              autoComplete="off"
-              placeholder="$1 [at] $2"
-              onChange={(event) => update({ replace: event.target.value })}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  update({ view: 'replace' })
-                }
-              }}
-            />
-            <span className="regex-replace-hint">$1–$9 · $&amp; · $$</span>
-            <button
-              className={`btn ${state.view === 'replace' ? 'active' : ''}`}
-              onClick={() => update({ view: 'replace' })}
-              disabled={!result || result.matches.length === 0}
-            >
-              预览替换
-            </button>
-          </div>
-
-          {helpOpen ? (
-            <div className="regex-syntax-help">
-              <div className="regex-syntax-head">
-                <strong>正则语法速查</strong>
-                <span>fancy-regex · 支持环视与反向引用 · 受 300ms 超时保护</span>
-              </div>
-              <div className="regex-syntax-scroll">
-                <table className="regex-syntax-table">
-                  <thead>
-                    <tr>
-                      <th>语法</th>
-                      <th>说明</th>
-                      <th>示例</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="syntax-section"><th colSpan={3}>字符与集合</th></tr>
-                    <tr><td><code>.</code></td><td>任意字符（默认不含换行）</td><td><code>a.c</code></td></tr>
-                    <tr><td><code>\d \w \s</code></td><td>数字 / 单词字符 / 空白</td><td><code>\d+</code></td></tr>
-                    <tr><td><code>[abc]</code></td><td>集合内任一字符</td><td><code>[aeiou]</code></td></tr>
-                    <tr><td><code>[^abc]</code></td><td>排除集合</td><td><code>[^0-9]</code></td></tr>
-                    <tr className="syntax-section"><th colSpan={3}>锚点与量词</th></tr>
-                    <tr><td><code>^ $</code></td><td>行首 / 行尾</td><td><code>^INFO</code></td></tr>
-                    <tr><td><code>\b</code></td><td>单词边界</td><td><code>\bcat\b</code></td></tr>
-                    <tr><td><code>* + ?</code></td><td>0+ / 1+ / 0 或 1 次</td><td><code>a+</code></td></tr>
-                    <tr><td><code>{'{n,m}'}</code></td><td>n 到 m 次；加 <code>?</code> 惰性</td><td><code>a{'{2,4}'}</code></td></tr>
-                    <tr className="syntax-section"><th colSpan={3}>分组与断言</th></tr>
-                    <tr><td><code>(...)</code></td><td>捕获组，替换用 $1–$9</td><td><code>(\w+)@</code></td></tr>
-                    <tr><td><code>(?:...)</code></td><td>非捕获组</td><td><code>(?:https?)</code></td></tr>
-                    <tr><td><code>(?&lt;name&gt;...)</code></td><td>命名组</td><td><code>(?&lt;user&gt;\w+)</code></td></tr>
-                    <tr><td><code>(?=...) (?&lt;=...)</code></td><td>先行 / 后行断言</td><td><code>(?=@)</code></td></tr>
-                    <tr className="syntax-section"><th colSpan={3}>替换与选项</th></tr>
-                    <tr><td><code>$1 $2</code></td><td>捕获组内容</td><td><code>$1@$2</code></td></tr>
-                    <tr><td><code>$&amp;</code></td><td>整个匹配</td><td><code>[$&amp;]</code></td></tr>
-                    <tr><td><code>$$</code></td><td>字面量 $</td><td><code>$$5</code></td></tr>
-                    <tr><td><code>g i m</code></td><td>全局 / 忽略大小写 / 多行</td><td><code>g</code></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="regex-results-head">
-            <span>
-              {state.view === 'replace'
-                ? `替换预览 · ${replacement.count} 处`
-                : `匹配结果 · ${result?.count ?? 0} 个`}
-              {result?.truncated ? '（已截断）' : ''}
-            </span>
-            <div className="regex-view-toggle" role="tablist" aria-label="结果视图">
-              <button
-                className={state.view === 'matches' ? 'active' : ''}
-                onClick={() => update({ view: 'matches' })}
-              >
-                原文
-              </button>
-              <button
-                className={state.view === 'aggregate' ? 'active' : ''}
-                onClick={() => update({ view: 'aggregate' })}
-              >
-                聚合
-              </button>
-              <button
-                className={state.view === 'replace' ? 'active' : ''}
-                onClick={() => update({ view: 'replace' })}
-              >
-                替换
-              </button>
-            </div>
-          </div>
-
-          <div className="regex-results">
-            {error ? (
-              <div className="m4-error regex-error">
-                <strong>{error.kind === 'timeout' ? '执行超时' : '匹配失败'}</strong>
-                <span>{error.message}</span>
-              </div>
-            ) : !isTauri ? (
-              <div className="regex-empty">浏览器预览不支持正则 worker，请使用桌面端打开</div>
-            ) : !state.pattern.trim() ? (
-              <div className="regex-empty">输入正则表达式后按 ⌘F 或点击执行</div>
-            ) : !result ? (
-              <div className="regex-empty">{running ? '正在匹配…' : '按 ⌘F 开始搜索'}</div>
-            ) : state.view === 'replace' ? (
-              <div className="regex-replace-view">
-                <div className="regex-replace-actions">
-                  <span>{replacement.count} 处替换 · UTF-8</span>
-                  <button
-                    className="btn ghost"
-                    onClick={() => void copy(replacement.text, '替换结果')}
-                  >
-                    <Copy size={12} strokeWidth={1.8} />
-                    复制结果
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={applyReplacement}
-                    disabled={replacement.count === 0}
-                  >
-                    应用到原文
-                  </button>
-                </div>
-                <pre className="regex-replace-preview">{replacement.text || '（空）'}</pre>
-              </div>
-            ) : result.matches.length === 0 ? (
-              <div className="regex-empty">没有匹配</div>
-            ) : state.view === 'aggregate' ? (
-              <div className="regex-aggregate">
-                {aggregate.map((item) => (
-                  <button
-                    key={item.text}
-                    className="regex-aggregate-row"
-                    onClick={() => {
-                      setActiveText(item.text)
-                      locate(item.first)
-                    }}
-                    title={`点击定位；${item.count} 处同类匹配会同时高亮`}
-                  >
-                    <span className="regex-aggregate-text">{item.text}</span>
-                    <span className="regex-bar">
-                      <span style={{ width: `${(item.count / maxAggregate) * 100}%` }} />
-                    </span>
-                    <span className="regex-aggregate-count">{item.count}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="regex-match-list">
-                {result.matches.map((match, index) => (
-                  <div className="regex-match-row" key={`${match.start}-${index}`}>
-                    <button
-                      className="regex-match-main"
-                      onClick={() => {
-                        setActiveText(match.text)
-                        locate(match)
-                      }}
-                    >
-                      <span className="regex-match-index">{index + 1}</span>
-                      <span className="regex-match-text">{match.text || '（空匹配）'}</span>
-                      <span className="regex-match-range">
-                        {match.start}–{match.end}
-                      </span>
-                    </button>
-                    {match.groups.some((group) => group != null) ? (
-                      <div className="regex-groups">
-                        {match.groups.map((group, groupIndex) =>
-                          group == null ? null : (
-                            <span className="regex-group" key={groupIndex}>
-                              ${groupIndex + 1}={group}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    ) : null}
-                    <button
-                      className="btn ghost regex-copy"
-                      onClick={() => void copy(match.text, '匹配内容')}
-                      title="复制匹配"
-                    >
-                      <Copy size={12} strokeWidth={1.8} />
-                    </button>
-                    <button
-                      className="btn ghost regex-copy"
-                      onClick={() => {
-                        setActiveText(match.text)
-                        locate(match)
-                      }}
-                      title="在原文中定位"
-                    >
-                      <LocateFixed size={12} strokeWidth={1.8} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+    <div className="regex-tool regex-side-tool" onKeyDown={(event: ReactKeyboardEvent) => {
+      if (isModPressed(event) && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        void run()
+      }
+    }}>
+      <div className="regex-pattern-row">
+        <span className="regex-pattern-label">expr</span>
+        <input
+          className="regex-pattern"
+          value={state.pattern}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="(?P<user>\\w+)@(?P<host>[\\w.-]+)"
+          onChange={(event) => update({ pattern: event.target.value })}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              void run()
+            }
+          }}
+        />
+        <button className={`btn ghost ${helpOpen ? 'active' : ''}`} onClick={() => setHelpOpen((open) => !open)}>
+          <BookOpen size={13} strokeWidth={1.8} />
+          语法
+        </button>
+        <button className="btn primary" onClick={() => void run()} disabled={running || !isTauri}>
+          <Play size={13} strokeWidth={1.8} />
+          {running ? '匹配中…' : '执行'}
+        </button>
       </div>
 
-      <footer className="small-tool-foot">
-        <span>
-          {result?.error
-            ? '匹配失败'
-            : result
-              ? state.view === 'replace'
-                ? `${replacement.count} 处替换 · 选项 ${flags || '无'}`
-                : `${result.count} 个匹配 · ${result.unique} 个唯一 · ${result.durationMs} ms · 选项 ${flags || '无'}`
-              : '等待匹配'}
+      <div className="regex-flags-row">
+        <Check label="g 全局" checked={state.global} onChange={(checked) => update({ global: checked })} />
+        <Check label="i 忽略大小写" checked={state.ignoreCase} onChange={(checked) => update({ ignoreCase: checked })} />
+        <Check label="m 多行" checked={state.multiLine} onChange={(checked) => update({ multiLine: checked })} />
+        <span className="regex-flags">{flags || '无选项'}</span>
+        <span className="regex-side-hint">{modKey('F')} 执行 · Python 风格 · {inputText.length} 字符</span>
+      </div>
+
+      {helpOpen ? (
+        <div className="regex-syntax-help regex-side-help">
+          <div className="regex-syntax-head">
+            <strong>Python 风格正则</strong>
+            <span>fancy-regex · 支持环视、反向引用、命名组</span>
+          </div>
+          <div className="regex-syntax-python">
+            <code>(?P&lt;name&gt;...)</code><span>命名捕获组</span>
+            <code>(?P=name)</code><span>按名称反向引用</span>
+            <code>(?i)</code><span>内联忽略大小写</span>
+            <code>\A \Z</code><span>文本开头 / 结尾</span>
+            <code>(?=...) (?&lt;=...)</code><span>前瞻 / 后顾断言</span>
+            <code>\d \w \s</code><span>数字 / 单词 / 空白</span>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="regex-result-tabs">
+        <div className="regex-view-toggle" role="tablist" aria-label="结果视图">
+          <button className={view === 'matches' ? 'active' : ''} onClick={() => update({ view: 'matches' })}>
+            匹配
+          </button>
+          <button className={view === 'aggregate' ? 'active' : ''} onClick={() => update({ view: 'aggregate' })}>
+            聚合
+          </button>
+          <button className={view === 'replace' ? 'active' : ''} onClick={() => update({ view: 'replace' })}>
+            替换
+          </button>
+        </div>
+        <span className="regex-result-meta">
+          {error ? '执行失败' : view === 'aggregate' ? `${aggregateCount} 个唯一结果` : view === 'replace' ? `${total} 处可替换` : `${total} 个匹配`}
+          {result?.truncated ? ' · 已截断' : ''}
         </span>
-        <span className="small-tool-foot-note">
-          {result?.truncated ? '结果已截断到 10000 条' : '点击结果行可在原文中定位'}
-        </span>
-      </footer>
+        {current != null ? <span className="regex-current-label">当前 match{current + 1}</span> : null}
+      </div>
+
+      {error ? (
+        <div className="m4-error regex-error"><strong>匹配失败</strong><span>{error}</span></div>
+      ) : !state.pattern.trim() ? (
+        <div className="regex-empty">输入 Python 风格表达式后按 {modKey('F')} 或点击执行</div>
+      ) : !result ? (
+        <div className="regex-empty">{running ? '正在匹配…' : `按 ${modKey('F')} 开始搜索`}</div>
+      ) : view === 'replace' ? (
+        <ReplaceView
+          count={total}
+          template={state.replace}
+          onTemplateChange={(value) => update({ replace: value })}
+          output={replaceOutput}
+          onGenerate={generateReplacement}
+          onApply={applyReplacement}
+          onCopy={() => replaceOutput != null && void copy(replaceOutput, '替换结果')}
+        />
+      ) : view === 'aggregate' ? (
+        <AggregateList matches={result.matches} onFocus={focusMatch} />
+      ) : total === 0 ? (
+        <div className="regex-empty">没有匹配</div>
+      ) : (
+        <MatchList
+          matches={result.matches}
+          current={current ?? currentRanges?.current ?? null}
+          onFocus={focusMatch}
+          onCopy={(text) => void copy(text, '匹配内容')}
+        />
+      )}
     </div>
   )
 }

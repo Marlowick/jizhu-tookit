@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlignJustify,
   Asterisk,
   Binary,
+  Braces,
   Clock3,
   Copy,
   GitCompare,
@@ -11,11 +12,15 @@ import {
   Plus,
   QrCode,
   Settings,
+  Terminal,
   Undo2,
   Workflow,
+  WrapText,
   Zap,
 } from 'lucide-react'
+import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { CommandPalette } from './components/CommandPalette'
+import { ModePicker } from './components/ModePicker'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
@@ -41,18 +46,26 @@ import {
 const PANELS: Array<{
   type: WorkspacePanelType
   title: string
+  english: string
   description: string
+  keywords?: string[]
   icon: typeof Zap
 }> = [
-  { type: 'jq', title: 'jq 查询', description: '打开查询面板；表达式在沙箱执行', icon: Zap },
-  { type: 'diff', title: 'Diff 对比', description: '以当前标签为源，比较文本/JSON/URL', icon: GitCompare },
-  { type: 'qr', title: '二维码', description: '把选中行或当前文本生成 QR', icon: QrCode },
-  { type: 'pipeline', title: 'Pipeline 批处理', description: 'jq / 编码 / 正则 / 计数步骤链', icon: Workflow },
-  { type: 'url', title: 'URL 解析', description: '拆解并编辑当前 URL 参数', icon: Link2 },
-  { type: 'time', title: '时间转换', description: '时间戳与日期互转', icon: Clock3 },
-  { type: 'regex', title: '正则匹配', description: '手动 ⌘F 搜索，支持替换预览', icon: Asterisk },
-  { type: 'codec', title: '编码 / 解码', description: 'Base64 / URL / HTML / Unicode / Hex', icon: Binary },
+  { type: 'jq', title: 'jq 查询', english: 'JQ query', description: '打开查询面板；表达式在沙箱执行', keywords: ['jq', 'query'], icon: Zap },
+  { type: 'diff', title: 'Diff 对比', english: 'Diff', description: '以当前标签为源，比较文本/JSON/URL', keywords: ['diff', 'compare'], icon: GitCompare },
+  { type: 'qr', title: '二维码预览', english: 'QR code', description: '左侧编辑器 / 右侧二维码，单例分屏', keywords: ['qr', 'qrcode'], icon: QrCode },
+  { type: 'pipeline', title: 'Pipeline 批处理', english: 'Pipeline', description: 'jq / 编码 / 正则 / 计数步骤链', keywords: ['pipeline', 'batch'], icon: Workflow },
+  { type: 'url', title: 'URL 解析', english: 'URL inspector', description: '拆解并编辑当前 URL 参数', keywords: ['url', 'query'], icon: Link2 },
+  { type: 'time', title: '时间转换', english: 'Time', description: '时间戳与日期互转', keywords: ['time', 'timestamp'], icon: Clock3 },
+  { type: 'regex', title: '正则匹配', english: 'Regex', description: '手动 ⌘F 搜索，支持替换预览', keywords: ['regex', 'regular expression'], icon: Asterisk },
+  { type: 'codec', title: '编码 / 解码', english: 'Encode / Decode', description: 'Base64 / URL / HTML / Unicode / Hex', keywords: ['codec', 'base64', 'encode', 'decode'], icon: Binary },
+  { type: 'data', title: '格式转换', english: 'Data format', description: 'YAML / TOML ↔ JSON，使用左侧编辑器输入', keywords: ['yaml', 'toml', 'json', 'convert'], icon: Braces },
+  { type: 'curl', title: 'cURL 请求', english: 'cURL request', description: '解析左侧 curl 命令，查看响应 headers / body', keywords: ['curl', 'http', 'request', 'api'], icon: Terminal },
 ]
+
+interface ClosePrompt {
+  label: string
+}
 
 export default function App() {
   const activeTab = useAppStore(selectActiveTab)
@@ -63,19 +76,21 @@ export default function App() {
   const toast = useAppStore((state) => state.toast)
 
   const activate = useAppStore((state) => state.activate)
-  const closeTab = useAppStore((state) => state.closeTab)
   const setText = useAppStore((state) => state.setText)
   const setPaletteOpen = useAppStore((state) => state.setPaletteOpen)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
+  const updateSettings = useAppStore((state) => state.updateSettings)
   const showToast = useAppStore((state) => state.showToast)
   const newWorkspace = useAppStore((state) => state.newWorkspace)
   const setWorkspaceMode = useAppStore((state) => state.setWorkspaceMode)
   const openWorkspacePanel = useAppStore((state) => state.openWorkspacePanel)
   const closeWorkspacePanel = useAppStore((state) => state.closeWorkspacePanel)
-  const toggleWorkspacePanelMaximize = useAppStore((state) => state.toggleWorkspacePanelMaximize)
-  const focusWorkspacePanel = useAppStore((state) => state.focusWorkspacePanel)
+  const closeSideTool = useAppStore((state) => state.closeSideTool)
+  const closeTab = useAppStore((state) => state.closeTab)
 
   const workspace = activeTab?.workspace
+  const [modePickerOpen, setModePickerOpen] = useState(false)
+  const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
 
   useEffect(() => {
     document.documentElement.dataset.theme = 'dark'
@@ -114,62 +129,71 @@ export default function App() {
     }
   }, [activeDoc, showToast])
 
+  const requestClose = useCallback(() => {
+    if (!activeTab) return
+    // 工具/面板状态保存在标签上，关闭可随时恢复，直接关闭不打扰
+    if (workspace?.sideTool) {
+      closeSideTool(activeTab.id)
+      return
+    }
+    if (workspace?.activePanelId) {
+      closeWorkspacePanel(activeTab.id, workspace.activePanelId)
+      return
+    }
+    // 关闭标签会丢弃文档内容，有内容时需要确认
+    if (activeDoc?.text.trim()) {
+      const content = activeDoc.text.replace(/\s+/g, ' ').trim()
+      const label = content ? `${content.slice(0, 18)}${content.length > 18 ? '…' : ''}` : activeDoc.title
+      setClosePrompt({ label })
+      return
+    }
+    closeTab(activeTab.id)
+  }, [activeDoc, activeTab, closeSideTool, closeTab, closeWorkspacePanel, workspace])
+
+  const confirmClose = useCallback(() => {
+    if (activeTab) closeTab(activeTab.id)
+    setClosePrompt(null)
+  }, [activeTab, closeTab])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!activeTab) return
       const mod = isModPressed(event)
-      if (mod && event.shiftKey && event.key.toLowerCase() === 'p') {
+      const key = event.key.toLowerCase()
+
+      if (mod && event.shiftKey && key === 'p') {
         event.preventDefault()
         setPaletteOpen(!paletteOpen)
         return
       }
-      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
-        if (!workspace?.activePanelId) return
+
+      if (mod && !event.shiftKey && !event.altKey && key === 'w') {
         event.preventDefault()
-        toggleWorkspacePanelMaximize(activeTab.id)
+        if (closePrompt || paletteOpen || settingsOpen || modePickerOpen) return
+        requestClose()
         return
       }
-      if (
-        event.ctrlKey &&
-        event.altKey &&
-        (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
-        workspace?.panels.length
-      ) {
-        event.preventDefault()
-        const panels = workspace.panels
-        const at = panels.findIndex((panel) => panel.id === workspace.activePanelId)
-        const next = event.key === 'ArrowRight' ? (at + 1 + panels.length) % panels.length : (at - 1 + panels.length) % panels.length
-        focusWorkspacePanel(activeTab.id, panels[next].id)
-        return
-      }
-      if (event.altKey && !mod && !event.shiftKey) {
-        const digit = /^Digit([1-4])$/.exec(event.code)?.[1] ?? (/^[1-4]$/.test(event.key) ? event.key : null)
+
+      if (mod && !event.shiftKey && !event.altKey) {
+        const digit = /^Digit([1-9])$/.exec(event.code)?.[1] ?? (/^[1-9]$/.test(event.key) ? event.key : null)
         if (digit) {
+          // 无论标签是否存在都阻止默认输入，避免数字落进编辑器。
+          event.preventDefault()
           const target = useAppStore.getState().tabs[Number(digit) - 1]
-          if (target) {
-            event.preventDefault()
-            activate(target.id)
-          }
+          if (target) activate(target.id)
           return
         }
-      }
-      if (event.key === 'Escape' && !paletteOpen && !settingsOpen && workspace?.activePanelId) {
-        event.preventDefault()
-        closeWorkspacePanel(activeTab.id, workspace.activePanelId)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
-    activeTab,
     activate,
-    closeWorkspacePanel,
-    focusWorkspacePanel,
+    closePrompt,
+    modePickerOpen,
     paletteOpen,
+    requestClose,
     setPaletteOpen,
     settingsOpen,
-    toggleWorkspacePanelMaximize,
-    workspace,
   ])
 
   const commands = useMemo<CommandItem[]>(() => {
@@ -180,9 +204,11 @@ export default function App() {
       items.push({
         id: `panel-${panel.type}`,
         title: panel.title,
+        english: panel.english,
+        keywords: panel.keywords,
         description: panel.description,
         group: '面板 · 弹窗',
-        hint: '平铺',
+        hint: ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl'].includes(panel.type) ? '分屏 · 单例' : '平铺',
         icon: panel.icon,
         run: () => openWorkspacePanel(activeTab.id, panel.type),
       })
@@ -192,6 +218,7 @@ export default function App() {
       {
         id: 'undo',
         title: '撤销',
+        english: 'Undo',
         description: '撤销当前编辑器的上一步操作',
         group: '编辑',
         hint: '⌘Z',
@@ -199,26 +226,44 @@ export default function App() {
         run: requestEditorUndo,
       },
       {
-        id: 'toggle-mode',
-        title: workspace.mode === 'json' ? '切换到 plain 模式' : '切换到 JSON 模式',
-        description: '切换当前工作区的编辑器模式',
+        id: 'toggle-wrap',
+        title: settings.wordWrap ? '关闭自动换行' : '开启自动换行',
+        english: 'Toggle word wrap',
+        keywords: ['wrap', 'word wrap'],
+        description: '作用于 plain / JSON / Calc 编辑器；默认开启',
         group: '编辑',
-        hint: '模式',
+        hint: settings.wordWrap ? 'Wrap 开' : 'Wrap 关',
+        icon: WrapText,
+        run: () => {
+          updateSettings({ wordWrap: !settings.wordWrap })
+          showToast(settings.wordWrap ? '自动换行已关闭' : '自动换行已开启')
+        },
+      },
+      {
+        id: 'mode',
+        title: '模式',
+        english: 'Mode',
+        keywords: ['plain', 'json', 'calc', 'editor', 'language'],
+        description: '选择 Plain / JSON / Calc 编辑器模式',
+        group: '编辑',
         icon: AlignJustify,
-        run: () => setWorkspaceMode(activeTab.id, workspace.mode === 'json' ? 'plain' : 'json'),
+        run: () => setModePickerOpen(true),
       },
       {
         id: 'settings',
         title: '设置',
+        english: 'Settings',
+        keywords: ['settings', 'preferences', 'options', 'shortcuts'],
         description: '编辑器字号、自动换行、快捷键与关于',
         group: '全局',
-        hint: '⌘,',
         icon: Settings,
         run: () => setSettingsOpen(true),
       },
       {
         id: 'new-workspace',
         title: '新建工作区',
+        english: 'New workspace',
+        keywords: ['new', 'tab', 'workspace'],
         description: '创建一个新的空白编辑工作区',
         group: '全局',
         hint: '+',
@@ -232,6 +277,8 @@ export default function App() {
         {
           id: 'format-json',
           title: '格式化 JSON',
+          english: 'Format JSON',
+          keywords: ['format', 'json', 'pretty'],
           description: '按设置中的缩进格式化当前文档',
           group: '编辑',
           hint: 'JSON',
@@ -241,6 +288,8 @@ export default function App() {
         {
           id: 'minify-json',
           title: '压缩 JSON',
+          english: 'Minify JSON',
+          keywords: ['minify', 'json', 'compact'],
           description: '压缩为单行 JSON',
           group: '编辑',
           hint: 'JSON',
@@ -250,6 +299,8 @@ export default function App() {
         {
           id: 'copy-doc',
           title: '复制当前文本',
+          english: 'Copy text',
+          keywords: ['copy', 'clipboard'],
           description: '把编辑器内容复制到剪贴板',
           group: '编辑',
           hint: '剪贴板',
@@ -270,6 +321,9 @@ export default function App() {
     openWorkspacePanel,
     setSettingsOpen,
     setWorkspaceMode,
+    settings.wordWrap,
+    showToast,
+    updateSettings,
     workspace,
   ])
 
@@ -287,6 +341,23 @@ export default function App() {
         <CommandPalette items={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}
       {settingsOpen ? <SettingsDialog /> : null}
+      {modePickerOpen ? (
+        <ModePicker
+          current={workspace.mode}
+          onChoose={(mode) => {
+            setWorkspaceMode(activeTab.id, mode)
+            setModePickerOpen(false)
+          }}
+          onClose={() => setModePickerOpen(false)}
+        />
+      ) : null}
+      {closePrompt ? (
+        <CloseConfirmDialog
+          label={closePrompt.label}
+          onCancel={() => setClosePrompt(null)}
+          onConfirm={confirmClose}
+        />
+      ) : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </div>
   )

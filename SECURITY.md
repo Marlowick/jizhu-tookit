@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-This repository currently publishes **source code only** for `jizhu 0.1.x` on macOS. There is no signed or notarized binary release yet.
+This repository currently publishes **source code only** for `jizhu 1.0.x` on macOS. There is no signed or notarized binary release yet.
 
 ## Reporting a vulnerability
 
@@ -22,7 +22,7 @@ In scope:
 
 - Tauri shell, capabilities, CSP, command boundary
 - JSON/tree/editor behavior and paste/session handling
-- jq/jaq and regex worker sandboxing, timeouts, output caps
+- jaq and regex worker sandboxing, timeouts, output caps
 - pipeline execution and workflow import validation
 - QR/export paths and clipboard behavior
 - build, dependency and release configuration
@@ -35,9 +35,9 @@ Out of scope:
 
 ## Security model
 
-- No telemetry, no account, no network requests in the application.
-- No filesystem access from the webview; no fs/shell/http plugins.
-- jq and regex run in limited worker subprocesses.
+- No telemetry, no account. The application does not initiate network requests on its own; only explicit cURL request/diff actions contact their target URLs.
+- No filesystem access from the webview; no fs/shell/http plugins. cURL uses a fixed system binary with argument arrays, not a shell.
+- jaq and regex run in limited worker subprocesses; jq no longer invokes a system binary.
 - Tauri capabilities are minimal (`core:default` + window drag).
 - See the source, tests and release notes for implementation details.
 

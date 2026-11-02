@@ -73,11 +73,13 @@ function Cell({
   line,
   range,
   mode,
+  sign,
 }: {
   side: 'a' | 'b'
   line: DiffLine | null
   range: [number, number] | null
   mode: DiffMode
+  sign: string
 }) {
   if (!line) {
     return (
@@ -90,7 +92,12 @@ function Cell({
   const tokens = mode === 'json' ? tokenizeJson(line.text) : [{ text: line.text }]
   return (
     <div className={`diff-cell ${side}`}>
-      <span className="diff-ln">{line.number}</span>
+      <span className="diff-ln">
+        <span className="diff-sign" aria-hidden="true">
+          {sign}
+        </span>
+        {line.number}
+      </span>
       <span className="diff-code" title={line.text}>
         {renderTokens(tokens, range)}
       </span>
@@ -101,10 +108,12 @@ function Cell({
 function Row({ row, mode, focused }: { row: DiffRow; mode: DiffMode; focused: boolean }) {
   const ranges =
     row.kind === 'change' && row.a && row.b ? inlineRanges(row.a.text, row.b.text) : null
+  const sign = (side: 'a' | 'b') =>
+    row.kind === 'add' ? (side === 'b' ? '+' : '') : row.kind === 'remove' ? (side === 'a' ? '−' : '') : row.kind === 'change' ? '~' : ''
   return (
     <div className={`diff-line-row ${row.kind} ${focused ? 'focused' : ''}`}>
-      <Cell side="a" line={row.a} range={ranges?.a ?? null} mode={mode} />
-      <Cell side="b" line={row.b} range={ranges?.b ?? null} mode={mode} />
+      <Cell side="a" line={row.a} range={ranges?.a ?? null} mode={mode} sign={sign('a')} />
+      <Cell side="b" line={row.b} range={ranges?.b ?? null} mode={mode} sign={sign('b')} />
     </div>
   )
 }
@@ -215,13 +224,13 @@ export function LineDiffView({ result, mode, aLabel, bLabel }: LineDiffViewProps
     <div className="diff-view">
       <div className="diff-view-bar">
         <span className="diff-hunk-count">
-          {hunks.length ? `${hunks.length} 处差异` : '无差异'}
+          {hunks.length ? `${hunks.length} 组差异` : '无差异'}
         </span>
         <button
           className="btn ghost diff-nav"
-          aria-label="上一处差异"
+          aria-label="上一组差异"
           aria-keyshortcuts="Alt+ArrowUp"
-          title="上一处差异（⌥↑）"
+          title="上一组差异（⌥↑）"
           disabled={!hunks.length}
           onClick={() => jump(-1)}
         >
@@ -233,9 +242,9 @@ export function LineDiffView({ result, mode, aLabel, bLabel }: LineDiffViewProps
         <span className="diff-key-hint">⌥↑↓</span>
         <button
           className="btn ghost diff-nav"
-          aria-label="下一处差异"
+          aria-label="下一组差异"
           aria-keyshortcuts="Alt+ArrowDown"
-          title="下一处差异（⌥↓）"
+          title="下一组差异（⌥↓）"
           disabled={!hunks.length}
           onClick={() => jump(1)}
         >

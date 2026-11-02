@@ -4,7 +4,11 @@
 [advisories]
 db-urls = ["https://github.com/RustSec/advisory-db"]
 yanked = "deny"
-ignore = [] # 每条豁免必须写原因与到期日
+ignore = [
+  # Tauri 2.12.5 仍锁定 gtk ^0.18；gtk 0.19/glib 0.22 尚不被 Tauri 接受，
+  # proc-macro-error 仅经 glib-macros 进入 Linux 构建期；2027-02-01 重新评估
+  { id = "RUSTSEC-2024-0370", reason = "Tauri 2.12.5 仍锁定 gtk ^0.18，暂无法升级至 glib 0.22；proc-macro-error 仅 Linux 构建期；2027-02-01 重新评估" },
+]
 
 [licenses]
 allow = [
@@ -13,6 +17,8 @@ allow = [
   "Apache-2.0 WITH LLVM-exception",
   "BSD-2-Clause",
   "BSD-3-Clause",
+  # Windows-only clipboard-win/error-code; clipboard-manager is used by copy_text.
+  "BSL-1.0",
   "ISC",
   "Zlib",
   "Unicode-3.0",

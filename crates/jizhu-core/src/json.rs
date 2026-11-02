@@ -1,10 +1,10 @@
 use serde::Serialize;
-use serde_json::ser::PrettyFormatter;
 use serde_json::{Map, Value};
 
 pub const DEFAULT_MAX_NODES: usize = 200_000;
 const MIN_MAX_NODES: usize = 1_000;
 const PREVIEW_LIMIT: usize = 64;
+const INLINE_OBJECT_MAX: usize = 79;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,14 +69,6 @@ impl JsonError {
             message: humanize(&error.to_string()),
             line: Some(error.line()),
             column: Some(error.column()),
-        }
-    }
-
-    fn plain(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            line: None,
-            column: None,
         }
     }
 }
@@ -679,20 +671,109 @@ pub fn format(text: &str, indent: u8, sort_keys: bool) -> Result<String, JsonErr
     if sort_keys {
         sort_value(&mut value);
     }
-    let indent_bytes: Vec<u8> = match indent {
-        0 => b"\t".to_vec(),
-        4 => b"    ".to_vec(),
-        _ => b"  ".to_vec(),
+    let indent_unit = match indent {
+        0 => "\t",
+        4 => "    ",
+        _ => "  ",
     };
-    let formatter = PrettyFormatter::with_indent(&indent_bytes);
-    let mut buffer = Vec::with_capacity(text.len() + 64);
-    {
-        let mut serializer = serde_json::Serializer::with_formatter(&mut buffer, formatter);
-        value
-            .serialize(&mut serializer)
-            .map_err(JsonError::from_serde)?;
+    let mut output = String::with_capacity(text.len() + 64);
+    write_value(&value, 0, indent_unit, &mut output)?;
+    Ok(output)
+}
+
+fn inline_json(value: &Value) -> Result<String, JsonError> {
+    let mut output = String::new();
+    write_inline(value, &mut output)?;
+    Ok(output)
+}
+
+fn write_inline(value: &Value, output: &mut String) -> Result<(), JsonError> {
+    match value {
+        Value::Object(map) => {
+            output.push('{');
+            for (index, (key, child)) in map.iter().enumerate() {
+                if index > 0 {
+                    output.push_str(", ");
+                }
+                write_json_string(key, output)?;
+                output.push_str(": ");
+                write_inline(child, output)?;
+            }
+            output.push('}');
+        }
+        Value::Array(items) => {
+            output.push('[');
+            for (index, child) in items.iter().enumerate() {
+                if index > 0 {
+                    output.push_str(", ");
+                }
+                write_inline(child, output)?;
+            }
+            output.push(']');
+        }
+        _ => output.push_str(&serde_json::to_string(value).map_err(JsonError::from_serde)?),
     }
-    String::from_utf8(buffer).map_err(|_| JsonError::plain("输出不是合法的 UTF-8"))
+    Ok(())
+}
+
+fn write_value(
+    value: &Value,
+    depth: usize,
+    indent: &str,
+    output: &mut String,
+) -> Result<(), JsonError> {
+    match value {
+        Value::Object(map) => {
+            if map.is_empty() {
+                output.push_str("{}");
+                return Ok(());
+            }
+            let inline = inline_json(value)?;
+            if inline.chars().count() < INLINE_OBJECT_MAX {
+                output.push_str(&inline);
+                return Ok(());
+            }
+            output.push_str("{\n");
+            for (index, (key, child)) in map.iter().enumerate() {
+                output.push_str(&indent.repeat(depth + 1));
+                write_json_string(key, output)?;
+                output.push_str(": ");
+                write_value(child, depth + 1, indent, output)?;
+                if index + 1 < map.len() {
+                    output.push(',');
+                }
+                output.push('\n');
+            }
+            output.push_str(&indent.repeat(depth));
+            output.push('}');
+        }
+        Value::Array(items) => {
+            if items.is_empty() {
+                output.push_str("[]");
+                return Ok(());
+            }
+            output.push_str("[\n");
+            for (index, child) in items.iter().enumerate() {
+                output.push_str(&indent.repeat(depth + 1));
+                write_value(child, depth + 1, indent, output)?;
+                if index + 1 < items.len() {
+                    output.push(',');
+                }
+                output.push('\n');
+            }
+            output.push_str(&indent.repeat(depth));
+            output.push(']');
+        }
+        _ => {
+            output.push_str(&serde_json::to_string(value).map_err(JsonError::from_serde)?);
+        }
+    }
+    Ok(())
+}
+
+fn write_json_string(text: &str, output: &mut String) -> Result<(), JsonError> {
+    output.push_str(&serde_json::to_string(text).map_err(JsonError::from_serde)?);
+    Ok(())
 }
 
 pub fn minify(text: &str) -> Result<String, JsonError> {
@@ -815,6 +896,61 @@ mod tests {
         assert!(!analysis.valid);
         assert!(analysis.issue.is_none());
         assert!(analysis.nodes.is_empty());
+    }
+
+    #[test]
+    fn small_objects_stay_on_one_line() {
+        let output = format(r#"{"a":1,"b":2}"#, 2, false).expect("format");
+        assert_eq!(output, r#"{"a": 1, "b": 2}"#);
+    }
+
+    #[test]
+    fn object_inline_threshold_is_strictly_under_79_chars() {
+        let make = |target: usize| {
+            (0..200)
+                .map(|length| serde_json::json!({"k": "x".repeat(length)}))
+                .find(|value| inline_json(value).expect("inline").chars().count() == target)
+                .unwrap_or_else(|| panic!("no value with inline length {target}"))
+        };
+        let small = make(78);
+        let small_inline = inline_json(&small).expect("inline");
+        assert_eq!(
+            format(&small.to_string(), 2, false).expect("format"),
+            small_inline
+        );
+
+        let edge = make(79);
+        let output = format(&edge.to_string(), 2, false).expect("format");
+        assert!(output.starts_with("{\n  \"k\": "));
+        assert!(output.ends_with('}'));
+    }
+
+    #[test]
+    fn nested_small_objects_stay_inline_inside_large_object() {
+        let input =
+            r#"{"alpha":"abcdefghijklmnop","beta":"qrstuvwxyz012345","nested":{"c":1,"d":2}}"#;
+        let output = format(input, 2, false).expect("format");
+        assert!(output.starts_with("{\n  \"alpha\":"));
+        assert!(output.contains("\"nested\": {\"c\": 1, \"d\": 2}"));
+    }
+
+    #[test]
+    fn large_objects_put_each_key_on_its_own_line() {
+        let input =
+            r#"{"alpha":"abcdefghij","beta":"klmnopqrst","gamma":"uvwxyz0123","delta":"4567890"}"#;
+        let output = format(input, 2, false).expect("format");
+        assert!(output.starts_with("{\n  \"alpha\": "));
+        assert!(output.contains("\n  \"beta\": "));
+        assert!(output.contains("\n  \"gamma\": "));
+        assert!(output.ends_with('}'));
+    }
+
+    #[test]
+    fn format_respects_indent_for_expanded_objects() {
+        let input =
+            r#"{"alpha":"abcdefghij","beta":"klmnopqrst","gamma":"uvwxyz0123","delta":"4567890"}"#;
+        let output = format(input, 4, false).expect("format");
+        assert!(output.starts_with("{\n    \"alpha\": "));
     }
 
     #[test]

@@ -41,6 +41,13 @@ export function JsonTree({ analysis, expanded, activePath, onSelect, onLocate, o
     return output
   }, [analysis, expanded])
 
+  const maxDepth = useMemo(
+    () => rows.reduce((deepest, row) => Math.max(deepest, row.depth), 0),
+    [rows],
+  )
+  // 给深层节点留出画布宽度；内容超出树面板时由 tree-wrap 横向滚动。
+  const canvasMinWidth = 12 + maxDepth * 14 + 300
+
   const indexByPath = useMemo(() => {
     const index = new Map<string, number>()
     rows.forEach((row, position) => index.set(row.path, position))
@@ -90,10 +97,12 @@ export function JsonTree({ analysis, expanded, activePath, onSelect, onLocate, o
     <>
       <div className="tree-wrap" ref={scrollRef} role="tree" aria-label="JSON 树">
         <div
+          className="tree-canvas"
           style={{
             height: rowVirtualizer.getTotalSize() + 16,
             position: 'relative',
             width: '100%',
+            minWidth: canvasMinWidth,
           }}
         >
           {virtualItems.map((item) => {

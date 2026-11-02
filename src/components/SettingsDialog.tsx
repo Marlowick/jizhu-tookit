@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Info, Keyboard, Settings, SlidersHorizontal, X } from 'lucide-react'
 import { modKey } from '../core/keyboard'
 import { useI18n } from '../core/useI18n'
+import { APP_VERSION } from '../core/version'
 import { useAppStore } from '../store/appStore'
 
 type SettingsTab = 'general' | 'editor' | 'shortcuts' | 'about'
@@ -16,11 +17,12 @@ const TABS: Array<{ id: SettingsTab; icon: typeof Settings }> = [
 const SHORTCUTS: Array<[string, string]> = [
   [modKey('⇧P'), 'settings.shortcut.command'],
   [modKey('F'), 'settings.shortcut.search'],
-  [`Ctrl+Z / ${modKey('Z')}`, 'settings.shortcut.undo'],
-  [modKey('⇧F'), 'settings.shortcut.maximize'],
+  [modKey('Z'), 'settings.shortcut.undo'],
+  [modKey('⇧Z'), 'settings.shortcut.redo'],
+  [modKey('1..9'), 'settings.shortcut.workspaces'],
+  [modKey('W'), 'settings.shortcut.closeTool'],
+  ['Tab / ⇧Tab', 'settings.shortcut.indent'],
   ['Esc', 'settings.shortcut.escape'],
-  ['Ctrl+Alt+←/→', 'settings.shortcut.panelFocus'],
-  ['Alt+1..4', 'settings.shortcut.workspaces'],
 ]
 
 export function SettingsDialog() {
@@ -50,7 +52,7 @@ export function SettingsDialog() {
       <div className="settings-dialog" role="dialog" aria-modal="true" aria-label={t('settings.title')}>
         <aside className="settings-side">
           <div className="settings-brand">
-            <Settings size={15} strokeWidth={1.8} color="#2563eb" />
+            <Settings size={15} strokeWidth={1.8} color="#81a2be" />
             <span>{t('settings.title')}</span>
           </div>
           <nav className="settings-nav">
@@ -69,7 +71,7 @@ export function SettingsDialog() {
             })}
           </nav>
           <div className="settings-side-foot">
-            <span>机杼工具箱 v0.1.0</span>
+            <span>机杼工具箱 v{APP_VERSION}</span>
             <span>{t('settings.side.tagline')}</span>
           </div>
         </aside>
@@ -89,14 +91,14 @@ export function SettingsDialog() {
                 <div className="settings-row">
                   <div>
                     <strong>{t('settings.theme.label')}</strong>
-                    <span>当前版本固定使用深色工作台</span>
+                    <span>{t('settings.theme.fixed')}</span>
                   </div>
                   <span className="settings-pill">{t('settings.theme.dark')}</span>
                 </div>
                 <div className="settings-row">
                   <div>
-                    <strong>文本编码 / 换行</strong>
-                    <span>编辑与复制始终使用 UTF-8；状态栏显示 LF</span>
+                    <strong>{t('settings.encoding.label')}</strong>
+                    <span>{t('settings.encoding.desc')}</span>
                   </div>
                   <span className="settings-pill">UTF-8 · LF</span>
                 </div>
@@ -201,7 +203,7 @@ export function SettingsDialog() {
               <>
                 <div className="settings-about-logo">
                   <span>机杼工具箱</span>
-                  <span>jizhu · v0.1.0</span>
+                  <span>jizhu · v{APP_VERSION}</span>
                 </div>
                 <div className="settings-about">
                   <p>{t('settings.about.tagline')}</p>

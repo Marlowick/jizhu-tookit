@@ -18,6 +18,7 @@ export const DIFF_MODE_LABELS: Record<DiffMode, string> = {
   json: 'JSON 结构化',
   text: '文本对比',
   url: 'URL 结构化',
+  curl: 'cURL 响应',
 }
 
 export function defaultDiffState(fromDocId?: string): DiffState {

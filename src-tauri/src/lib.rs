@@ -1,4 +1,5 @@
 mod commands;
+pub mod curl;
 mod jq;
 mod regex;
 pub mod worker;
@@ -55,6 +56,7 @@ pub fn run() {
     tauri::Builder::default()
         .menu(build_menu)
         .on_page_load(|_window, payload| {
+            let _ = &payload;
             #[cfg(debug_assertions)]
             eprintln!("[jizhu] page loaded: {}", payload.url());
         })
@@ -73,8 +75,8 @@ pub fn run() {
             commands::diff_json,
             commands::diff_url,
             commands::regex_run,
-            commands::jq_engines,
             commands::jq_run,
+            commands::curl_request,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run jizhu");

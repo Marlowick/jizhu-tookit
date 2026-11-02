@@ -4,22 +4,20 @@ import { copyText, errorMessage, isTauri, jqRun } from '../core/ipc'
 import { failedJqOutcome } from '../core/jqOutcome'
 import { isModPressed, modKey } from '../core/keyboard'
 import { SAMPLE_JQ_EXPR, SAMPLE_JSONL } from '../core/sample'
-import { jqEngineLabels, useJqEngines } from '../core/useJqEngines'
-import type { JqEngineChoice, JqOutcome, Tab } from '../core/types'
+import type { JqOutcome, Tab } from '../core/types'
 import { useAppStore } from '../store/appStore'
 import { JqSyntaxHelp } from './JqSyntaxHelp'
 
 interface JqToolProps {
   tab: Tab
+  embedded?: boolean
+  source?: string
+  onSourceChange?: (text: string) => void
 }
 
-export function JqTool({ tab }: JqToolProps) {
-  const engines = useJqEngines()
-  const { systemVersion, jaqVersion, autoLabel } = jqEngineLabels(engines)
-
+export function JqTool({ tab, embedded = false, source, onSourceChange }: JqToolProps) {
   const setJqInput = useAppStore((state) => state.setJqInput)
   const setJqExpr = useAppStore((state) => state.setJqExpr)
-  const setJqEngine = useAppStore((state) => state.setJqEngine)
   const showToast = useAppStore((state) => state.showToast)
 
   const [result, setResult] = useState<JqOutcome | null>(null)
@@ -29,9 +27,8 @@ export function JqTool({ tab }: JqToolProps) {
   const exprRef = useRef<HTMLInputElement>(null)
   const resultExpr = useRef('')
 
-  const input = tab.jqInput ?? ''
+  const input = embedded && source !== undefined ? source : tab.jqInput ?? ''
   const expr = tab.jqExpr ?? ''
-  const engine = tab.jqEngine ?? 'auto'
   const lineCount = input ? input.split('\n').length : 0
 
   useEffect(() => {
@@ -40,6 +37,12 @@ export function JqTool({ tab }: JqToolProps) {
     // 只在挂载时决定初始焦点
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (embedded) setResult(null)
+    // 左侧内容变化后旧结果立即失效
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, input])
 
   const run = async () => {
     if (!isTauri) {
@@ -58,7 +61,7 @@ export function JqTool({ tab }: JqToolProps) {
     const program = expr
     setRunning(true)
     try {
-      setResult(await jqRun(input, program, engine))
+      setResult(await jqRun(input, program))
       resultExpr.current = program
     } catch (error) {
       setResult(failedJqOutcome(errorMessage(error)))
@@ -69,16 +72,19 @@ export function JqTool({ tab }: JqToolProps) {
   }
 
   const loadSample = () => {
-    setJqInput(tab.id, SAMPLE_JSONL)
+    if (embedded) onSourceChange?.(SAMPLE_JSONL)
+    else setJqInput(tab.id, SAMPLE_JSONL)
     setJqExpr(tab.id, SAMPLE_JQ_EXPR)
     setResult(null)
     exprRef.current?.focus()
   }
 
   const clear = () => {
-    setJqInput(tab.id, '')
+    if (embedded) onSourceChange?.('')
+    else setJqInput(tab.id, '')
     setResult(null)
-    inputRef.current?.focus()
+    if (embedded) exprRef.current?.focus()
+    else inputRef.current?.focus()
   }
 
   const copy = async () => {
@@ -102,9 +108,9 @@ export function JqTool({ tab }: JqToolProps) {
       }}
     >
       <header className="jq-tool-head">
-        <Zap size={15} strokeWidth={1.8} color="#2563eb" />
+        <Zap size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>jq 查询</strong>
-        <span className="jq-sub">手动输入 · JSON / JSON Lines</span>
+        <span className="jq-sub">{embedded ? '来自左侧编辑器 · JSON / JSON Lines' : '手动输入 · JSON / JSON Lines'}</span>
         <span className="jq-tool-hint">{modKey('↵')} 运行</span>
       </header>
 
@@ -132,21 +138,6 @@ export function JqTool({ tab }: JqToolProps) {
             }
           }}
         />
-        <select
-          className="jq-select jq-engine-select"
-          value={engine}
-          onChange={(event) => {
-            setJqEngine(tab.id, event.target.value as JqEngineChoice)
-            setResult(null)
-          }}
-          aria-label="jq 引擎"
-        >
-          <option value="auto">{autoLabel}</option>
-          <option value="system" disabled={!engines?.system}>
-            系统 jq {engines?.system ? systemVersion : '（未检测到）'}
-          </option>
-          <option value="jaq">内置 jaq {jaqVersion}</option>
-        </select>
         <button className="btn primary" onClick={() => void run()} disabled={running || !isTauri}>
           {running ? '运行中…' : '运行'}
         </button>

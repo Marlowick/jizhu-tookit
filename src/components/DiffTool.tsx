@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeftRight, Copy, GitCompare, Info, Pencil, Play, X } from 'lucide-react'
 import { DEFAULT_DIFF_OPTIONS, DIFF_MODE_LABELS, defaultDiffState } from '../core/diff'
 import { unifiedPatch, urlDiffTable } from '../core/diffPatch'
-import { copyText, diffJson, diffText, diffUrl, errorMessage, isTauri } from '../core/ipc'
+import { copyText, curlRequest, diffJson, diffText, diffUrl, errorMessage, isTauri } from '../core/ipc'
+import { normalizeCurlExchange, parseCurl } from '../core/curl'
 import { TOOL_LABEL } from '../core/tools'
 import type {
   DiffMode,
@@ -25,7 +26,7 @@ type Output =
   | { kind: 'line'; data: DiffResult }
   | { kind: 'url'; data: UrlDiffResult }
 
-const MODES: DiffMode[] = ['json', 'text', 'url']
+const MODES: DiffMode[] = ['json', 'text', 'url', 'curl']
 
 function Check({
   label,
@@ -129,6 +130,23 @@ export function DiffTool({ tab }: DiffToolProps) {
         const data = await diffUrl(left, right, state.options)
         if (id !== requestId.current) return
         setResult({ kind: 'url', data })
+      } else if (state.mode === 'curl') {
+        const a = parseCurl(left)
+        const b = parseCurl(right)
+        if (!a.request) throw new Error(`A 侧 cURL：${a.error ?? '无法解析'}`)
+        if (!b.request) throw new Error(`B 侧 cURL：${b.error ?? '无法解析'}`)
+        const [aResponse, bResponse] = await Promise.all([
+          curlRequest(a.request),
+          curlRequest(b.request),
+        ])
+        if (id !== requestId.current) return
+        const data = await diffText(
+          normalizeCurlExchange(left, aResponse),
+          normalizeCurlExchange(right, bResponse),
+          state.options,
+        )
+        if (id !== requestId.current) return
+        setResult({ kind: 'line', data })
       } else {
         const data =
           state.mode === 'json'
@@ -147,7 +165,14 @@ export function DiffTool({ tab }: DiffToolProps) {
   }
 
   useEffect(() => {
-    if (!isTauri) return
+    requestId.current += 1
+    setResult(null)
+    setError(null)
+    setRunning(false)
+  }, [diff.mode])
+
+  useEffect(() => {
+    if (!isTauri || diff.mode === 'curl') return
     if (!aText.trim() || !bText.trim()) {
       requestId.current += 1
       setRunning(false)
@@ -189,7 +214,7 @@ export function DiffTool({ tab }: DiffToolProps) {
   const stats = result?.data.stats
   const lineMode: 'json' | 'text' = diff.mode === 'json' ? 'json' : 'text'
   const canCompare = Boolean(aText.trim() && bText.trim())
-  const canApply = Boolean(result && canCompare && diff.mode !== 'url')
+  const canApply = Boolean(result && canCompare && diff.mode !== 'url' && diff.mode !== 'curl')
 
   useEffect(() => {
     setOverwriteArmed(false)
@@ -240,7 +265,7 @@ export function DiffTool({ tab }: DiffToolProps) {
   return (
     <div className="diff-tool">
       <header className="diff-head">
-        <GitCompare size={15} strokeWidth={1.8} color="#2563eb" />
+        <GitCompare size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>Diff 对比</strong>
         <span className="diff-sub">文本 / JSON / URL · 双栏对齐</span>
         <span className="diff-head-hint">差异只在本地计算</span>
@@ -398,6 +423,13 @@ export function DiffTool({ tab }: DiffToolProps) {
               </span>
             </>
           ) : null}
+
+          {diff.mode === 'curl' ? (
+            <span className="diff-option-note">
+              <Info size={12} strokeWidth={1.8} />
+              执行两侧 curl，比较原始命令、响应 headers 和格式化后的 JSON body
+            </span>
+          ) : null}
         </div>
 
         <button
@@ -421,7 +453,7 @@ export function DiffTool({ tab }: DiffToolProps) {
           <div className="diff-placeholder">
             <GitCompare size={20} strokeWidth={1.5} />
             <strong>选择或编辑 A / B 两侧</strong>
-            <span>可以选择已打开的 Tab，也可以手动粘贴文本、JSON 或 URL。</span>
+            <span>可以选择已打开的 Tab，也可以手动粘贴文本、JSON、URL 或 curl 命令。</span>
             <button className="btn" onClick={() => openEditor(!aText.trim() ? 'a' : 'b')}>
               <Pencil size={13} strokeWidth={1.8} />
               编辑{!aText.trim() ? ' A' : ' B'} 侧
@@ -455,7 +487,7 @@ export function DiffTool({ tab }: DiffToolProps) {
           <>
             <span className="diff-minus">−{stats.removed}</span>
             <span className="diff-plus">+{stats.added}</span>
-            <span>· {stats.differences} 处差异</span>
+            <span>· {stats.differences} 行差异</span>
           </>
         ) : (
           <span>等待对比</span>
@@ -499,7 +531,7 @@ export function DiffTool({ tab }: DiffToolProps) {
               autoFocus
               spellCheck={false}
               value={editText}
-              placeholder="粘贴 JSON、普通文本或 URL…"
+              placeholder="粘贴 JSON、普通文本、URL 或 curl 命令…"
               onChange={(event) => setEditText(event.target.value)}
             />
             <footer className="diff-modal-foot">

@@ -133,7 +133,7 @@ export function TimeTool({ tab }: TimeToolProps) {
   return (
     <div className="small-tool time-tool">
       <header className="small-tool-head">
-        <Clock size={15} strokeWidth={1.8} color="#2563eb" />
+        <Clock size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>时间转换</strong>
         <span className="small-tool-sub">时间戳 ↔ 可读时间</span>
         <span className="small-tool-hint">本地时区 · 秒 / 毫秒自动识别</span>

@@ -32,12 +32,6 @@ await page.addInitScript(() => {
         const mod = await fallback()
         return mod.minifyLocally(args.text)
       }
-      if (cmd === 'jq_engines') {
-        return {
-          system: { path: '/usr/bin/jq', version: 'jq-1.7.1', sha256: 'a'.repeat(64) },
-          jaq: { version: '3.1' },
-        }
-      }
       if (cmd === 'jq_run') {
         const lines = args.input.split('\n').filter((line) => line.trim())
         let output = ''
@@ -60,13 +54,29 @@ await page.addInitScript(() => {
           output = args.input
         }
         return {
-          engine: 'system',
-          engineLabel: '系统 jq 1.7.1',
-          version: 'jq-1.7.1',
+          engine: 'jaq',
+          engineLabel: '内置 jaq 3.1',
+          version: '3.1',
           output,
           count: output ? output.split('\n').length : 0,
           durationMs: 3,
           error: null,
+          truncated: false,
+        }
+      }
+      if (cmd === 'curl_request') {
+        const url = args.request.url
+        const isB = url.includes('b.example')
+        return {
+          status: 200,
+          statusText: 'OK',
+          headers: [
+            ['content-type', 'application/json'],
+            ['x-test', isB ? 'b' : 'a'],
+          ],
+          body: isB ? '{"ok":false,"value":2}' : '{"ok":true,"value":1}',
+          durationMs: 3,
+          size: isB ? 22 : 21,
           truncated: false,
         }
       }
@@ -111,6 +121,18 @@ await page.addInitScript(() => {
           truncated: false,
         }
       }
+      if (cmd === 'diff_text' && args.a.startsWith('# request')) {
+        const aFirst = args.a.split('\n').slice(0, 3).join('\n')
+        const bFirst = args.b.split('\n').slice(0, 3).join('\n')
+        return {
+          rows: [
+            { kind: 'change', a: { number: 1, text: aFirst }, b: { number: 1, text: bFirst } },
+            { kind: 'equal', a: { number: 4, text: '# headers' }, b: { number: 4, text: '# headers' } },
+              { kind: 'change', a: { number: 5, text: 'x-test: a' }, b: { number: 5, text: 'x-test: b' } },
+          ],
+          stats: { added: 0, removed: 0, changed: 2, differences: 2 },
+        }
+      }
       if (cmd === 'diff_text' || cmd === 'diff_json') {
         return {
           rows: [
@@ -145,10 +167,25 @@ async function openCommand(name) {
   await page.waitForTimeout(300)
 }
 async function closePanels() {
-  for (let i = 0; i < 4; i++) {
-    if ((await page.locator('.workspace-panel').count()) === 0) break
-    await page.keyboard.press('Escape')
-    await page.waitForTimeout(120)
+  for (let i = 0; i < 8; i++) {
+    const panels = await page.locator('.workspace-panel').count()
+    const split = await page.locator('.workspace-qr-split').count()
+    if (panels === 0 && split === 0) break
+    const sideClose = page.locator(
+      '.workspace-qr-preview button[aria-label="关闭二维码预览"], .side-tool-shell-head button[aria-label^="关闭"]',
+    ).first()
+    if (await sideClose.count()) {
+      await sideClose.click()
+      await page.waitForTimeout(160)
+      continue
+    }
+    const panelClose = page.locator('.workspace-panel-head button[aria-label="关闭面板"]').first()
+    if (await panelClose.count()) {
+      await panelClose.click()
+      await page.waitForTimeout(160)
+      continue
+    }
+    break
   }
 }
 async function setText(text) {
@@ -170,7 +207,8 @@ try {
   assert.equal(await page.locator('.tool-header').count(), 0)
 
   log('JSON mode, indent 2, tree, search, undo, error recovery')
-  await openCommand('切换到 JSON 模式')
+  await openCommand('模式')
+  await page.getByRole('option', { name: /JSON/ }).click()
   assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
   assert.equal(await page.locator('.json-tool .tree-pane').count(), 1)
   await setText('{"a":1,"b":[1,2]}')
@@ -179,7 +217,7 @@ try {
   assert.match(await page.locator('.cm-content').innerText(), /"a":1/)
   await openCommand('格式化 JSON')
   await page.waitForTimeout(300)
-  assert.match(await page.locator('.cm-content').innerText(), /  "a": 1/)
+  assert.match(await page.locator('.cm-content').innerText(), /\{"a": 1, "b": \[1, 2\]\}/)
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+f')
   await page.waitForTimeout(200)
@@ -218,57 +256,80 @@ try {
   log('settings: fixed dark, indent default 2, wrap, shortcuts')
   await openCommand('设置')
   assert.equal(await page.locator('.settings-dialog').count(), 1)
-  assert.match(await page.locator('.settings-dialog').innerText(), /固定使用深色工作台/)
+  assert.match(await page.locator('.settings-dialog').innerText(), /深色工作台/)
   await page.locator('.settings-dialog').getByRole('button', { name: '编辑器' }).click()
   await page.waitForTimeout(150)
   const indentSelect = page.locator('.settings-dialog select').last()
   assert.equal(await indentSelect.inputValue(), '2')
   await indentSelect.selectOption('4')
+  assert.match(await page.locator('.cm-content').getAttribute('class'), /cm-lineWrapping/)
+  await page.locator('.settings-switch').click()
+  await page.waitForTimeout(200)
+  assert.doesNotMatch(await page.locator('.cm-content').getAttribute('class'), /cm-lineWrapping/)
   await page.locator('.settings-switch').click()
   await page.waitForTimeout(200)
   assert.match(await page.locator('.cm-content').getAttribute('class'), /cm-lineWrapping/)
   await page.locator('.settings-dialog').getByRole('button', { name: '关闭', exact: true }).click()
   await page.waitForTimeout(150)
-  await setText('{"a":1,"b":2}')
+  await setText('{"alpha":"abcdefghij","beta":"klmnopqrst","gamma":"uvwxyz0123","delta":"4567890"}')
   await openCommand('格式化 JSON')
   await page.waitForTimeout(300)
-  assert.match(await page.locator('.cm-content').innerText(), /    "a": 1/)
+  assert.match(await page.locator('.cm-content').innerText(), /    "alpha":/)
 
   log('panels: input source selection, switch tab/manual')
   await closePanels()
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
-  await page.keyboard.type('alpha\nbeta')
+  await page.keyboard.type('alpha')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('beta')
   await page.waitForTimeout(200)
   await page.keyboard.press('Meta+ArrowUp')
   await page.keyboard.press('Home')
   await page.keyboard.press('Shift+End')
   await page.waitForTimeout(150)
-  await openCommand('二维码')
+  await openCommand('Diff 对比')
   assert.equal(await page.locator('.workspace-panel-source select').inputValue(), 'selection')
-  const qrInput = page.locator('.workspace-panel textarea').first()
-  assert.equal(await qrInput.inputValue(), 'alpha')
   await page.locator('.workspace-panel-source select').selectOption('tab')
   await page.waitForTimeout(250)
-  assert.equal(await qrInput.inputValue(), 'alpha\nbeta')
+  assert.equal(await page.locator('.workspace-panel-source select').inputValue(), 'tab')
   await page.locator('.workspace-panel-source select').selectOption('manual')
   await page.waitForTimeout(150)
   assert.equal(await page.locator('.workspace-panel-source select').inputValue(), 'manual')
   await closePanels()
 
-  log('QR: render and no file export button')
-  await openCommand('二维码')
-  await page.locator('.qr-textarea').fill('hello jizhu')
-  await page.waitForTimeout(500)
-  assert.ok((await page.locator('.qr-preview-card canvas').count()) > 0)
-  assert.equal(await page.getByRole('button', { name: /导出 PNG/ }).isVisible().catch(() => false), false)
+  log('QR: editor left / preview right, live, singleton, no input source')
   await closePanels()
-
-  log('URL: parse, params, JSON preview')
-  await openCommand('URL 解析')
-  await page.locator('.workspace-panel-source select').selectOption('manual')
-  await page.locator('.url-input').fill('https://example.com/v1?name=ada&age=32&meta=%7B%22ok%22%3Atrue%7D')
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.type('hello jizhu')
+  await page.waitForTimeout(200)
+  await openCommand('二维码')
+  assert.equal(await page.locator('.workspace-qr-split').count(), 1)
+  assert.equal(await page.locator('.workspace-qr-editor .cm-content').count(), 1)
+  assert.equal(await page.locator('.workspace-qr-preview canvas').count(), 1)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
+  assert.equal(await page.locator('.qr-textarea').count(), 0)
+  const qrBefore = await page.locator('.qr-canvas').evaluate((canvas) => canvas.toDataURL())
+  await page.locator('.workspace-qr-editor .cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.type('hello jizhu changed')
   await page.waitForTimeout(500)
+  const qrAfter = await page.locator('.qr-canvas').evaluate((canvas) => canvas.toDataURL())
+  assert.notEqual(qrBefore, qrAfter)
+  await openCommand('二维码')
+  assert.equal(await page.locator('.workspace-qr-split').count(), 1)
+  assert.equal(await page.locator('.workspace-panel').count(), 0)
+  await page.getByRole('button', { name: '关闭二维码预览' }).click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.locator('.workspace-qr-split').count(), 0)
+
+  log('URL: editor-powered side split, params, JSON preview')
+  await setText('https://example.com/v1?name=ada&age=32&meta=%7B%22ok%22%3Atrue%7D')
+  await openCommand('URL 解析')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.url-input').count(), 0)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
   assert.match(await page.locator('.url-structure').innerText(), /example\.com/)
   assert.ok((await page.locator('.url-param-row').count()) >= 3)
   const paramsBefore = await page.locator('.url-param-row').count()
@@ -283,7 +344,9 @@ try {
   const level3 = `https://c.example/?z=3&next=${encodeURIComponent(level4)}`
   const level2 = `https://b.example/?x=1&next=${encodeURIComponent(level3)}`
   const nested = `https://a.example/?redirect=${encodeURIComponent(level2)}`
-  await page.locator('.url-input').fill(nested)
+  await page.locator('.workspace-qr-editor .cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.type(nested)
   await page.waitForTimeout(500)
   assert.equal(await page.locator('.url-seg.path').count(), 1)
   assert.equal(await page.locator('.url-nested-block').count(), 3)
@@ -293,49 +356,113 @@ try {
   assert.ok(Math.abs(keyWidth - valueWidth) <= 1)
   await closePanels()
 
-  log('time: timestamp to cards, mode switch')
+  log('time: editor-powered side split')
+  await setText('1718092800')
   await openCommand('时间转换')
-  await page.locator('.workspace-panel-source select').selectOption('manual')
-  await page.locator('.time-input').fill('1718092800')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.time-input').count(), 0)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
   await page.waitForTimeout(400)
   assert.equal(await page.locator('.time-card').count(), 3)
   assert.match(await page.locator('.time-card-value').first().innerText(), /2024-06-11/)
   await page.getByRole('button', { name: '时间 → 时间戳' }).click()
   await page.waitForTimeout(250)
-  assert.equal(await page.locator('.time-input').inputValue(), '1718092800')
+  assert.equal(await page.locator('.time-card').count(), 3)
   await closePanels()
 
-  log('codec: encode/decode, protocol, swap')
+  log('codec: editor-powered side split')
+  await setText('hello')
   await openCommand('编码 / 解码')
-  await page.locator('.workspace-panel-source select').selectOption('manual')
-  await page.locator('.codec-input').fill('hello')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.codec-input').count(), 0)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
   await page.waitForTimeout(300)
-  assert.equal((await page.locator('.codec-output').innerText()).trim(), 'aGVsbG8')
+  assert.equal((await page.locator('.side-codec-output').innerText()).trim(), 'aGVsbG8')
   await page.getByRole('button', { name: '解码', exact: true }).click()
-  await page.locator('.codec-input').fill('aGVsbG8')
+  await page.locator('.workspace-qr-editor .cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.type('aGVsbG8')
   await page.waitForTimeout(300)
-  assert.ok((await page.locator('.codec-output').innerText()).includes('hello'))
+  assert.ok((await page.locator('.side-codec-output').innerText()).includes('hello'))
   await closePanels()
 
-  log('regex: manual Cmd+F, aggregate, replace preview')
+  log('data: YAML / TOML ↔ JSON')
+  await setText('name: Ada\nage: 32')
+  await openCommand('格式转换')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  await page.waitForTimeout(200)
+  assert.match(await page.locator('.data-convert-pre').innerText(), /"name": "Ada"/)
   await closePanels()
+
+  await setText('{"name":"Ada","age":32}')
+  await openCommand('格式转换')
+  await page.locator('.data-convert select').selectOption('json:toml')
+  await page.waitForTimeout(200)
+  assert.match(await page.locator('.data-convert-pre').innerText(), /name = "Ada"/)
+  await closePanels()
+
+  log('curl: editor curl command, response headers/body')
+  await setText("curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"Ada\"}'")
+  await openCommand('cURL 请求')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.curl-method').innerText(), 'POST')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await page.waitForTimeout(300)
+  assert.match(await page.locator('.curl-status').innerText(), /200 OK/)
+  assert.match(await page.locator('.curl-body').innerText(), /"ok": true/)
+  await page.getByRole('button', { name: /Headers/ }).click()
+  await page.waitForTimeout(150)
+  assert.match(await page.locator('.curl-headers').innerText(), /content-type/)
+  await closePanels()
+
+  log('curl diff: original commands + headers + formatted body')
+  await setText('curl https://a.example/api')
+  await openCommand('Diff 对比')
+  await page.getByRole('tab', { name: 'cURL 响应' }).click()
+  await page.waitForTimeout(200)
+  await page.locator('.diff-source').nth(1).getByRole('button', { name: '编辑' }).click()
+  await page.locator('.diff-modal-input').fill('curl https://b.example/api')
+  await page.getByRole('button', { name: '应用', exact: true }).click()
+  await page.waitForTimeout(150)
+  await page.getByRole('button', { name: '开始对比' }).click()
+  await page.waitForTimeout(500)
+  assert.ok((await page.locator('.diff-line-row').count()) > 0)
+  const curlDiffText = await page.locator('.diff-result-area').innerText()
+  assert.match(curlDiffText, /# request|# response/)
+  await closePanels()
+
+  log('regex: editor-powered side split, Cmd+F, aggregate, replace preview')
+  await setText('ada@example.com bob@example.com')
   await openCommand('正则匹配')
-  await page.locator('.regex-source').fill('ada@example.com bob@example.com')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
+  assert.equal(await page.locator('.regex-source').isVisible().catch(() => false), false)
   await page.locator('.regex-pattern').fill('(\\w+)@example\\.com')
   await page.keyboard.press('Meta+f')
   await page.waitForTimeout(700)
   assert.equal(await page.locator('.regex-match-row').count(), 2)
+  assert.equal(await page.locator('.cm-regex-hit').count(), 2)
+  await page.locator('.regex-match-row').first().locator('.regex-match-main').click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.locator('.cm-regex-current').count(), 1)
   await page.getByRole('button', { name: '聚合' }).click()
   await page.waitForTimeout(250)
   assert.equal(await page.locator('.regex-aggregate-row').count(), 2)
+  assert.equal(await page.getByRole('button', { name: /结果/ }).count(), 1)
   await page.getByRole('button', { name: '替换', exact: true }).click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.locator('.regex-replace-preview').count(), 0)
+  await page.getByRole('button', { name: '生成替换' }).click()
   await page.waitForTimeout(200)
   assert.equal(await page.locator('.regex-replace-preview').count(), 1)
   await closePanels()
 
-  log('jq: source text, run with mock engine')
+  log('jq: editor-powered side split, built-in jaq only')
+  await setText('{"user":"ada","score":91}\n{"user":"bob","score":72}')
   await openCommand('jq 查询')
-  await page.locator('.jq-input').fill('{"user":"ada","score":91}\n{"user":"bob","score":72}')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.workspace-panel-source').count(), 0)
+  assert.equal(await page.locator('.jq-input').isVisible().catch(() => false), false)
   await page.locator('.jq-expr').fill('select(.score > 80) | .user')
   await page.getByRole('button', { name: '运行', exact: true }).click()
   await page.waitForTimeout(500)
@@ -349,6 +476,8 @@ try {
   await page.keyboard.type('{"a":1}')
   await page.waitForTimeout(300)
   await openCommand('Diff 对比')
+  await page.getByRole('tab', { name: 'JSON 结构化' }).click()
+  await page.waitForTimeout(150)
   assert.equal(await page.locator('.diff-indent').inputValue(), '2')
   const bEdit = page.locator('.diff-source').nth(1).getByRole('button', { name: '编辑' })
   await bEdit.click()
@@ -358,41 +487,42 @@ try {
   await page.getByRole('button', { name: '开始对比' }).click()
   await page.waitForTimeout(500)
   assert.ok((await page.locator('.diff-line-row').count()) > 0)
+  assert.match(await page.locator('.diff-footer').innerText(), /1 行差异/)
+  assert.match(await page.locator('.diff-hunk-count').innerText(), /组差异|无差异/)
   await closePanels()
 
-  log('pipeline: input source, run all steps, result')
+  log('pipeline: editor source, step rows, result')
+  await setText('{"events":[{"payload":"aGVsbG8="}]}')
   await openCommand('Pipeline 批处理')
-  await page.locator('.workspace-panel-source select').selectOption('manual')
-  await page.locator('.pipeline-input').fill('{"events":[{"payload":"aGVsbG8="}]}')
+  assert.equal(await page.locator('.side-tool-split').count(), 1)
+  assert.equal(await page.locator('.pipeline-input').count(), 0)
+  assert.equal(await page.locator('.pipeline-row').count(), 4)
   await page.getByRole('button', { name: '运行', exact: true }).click()
   await page.waitForTimeout(800)
-  assert.ok((await page.locator('.pipeline-step-card').count()) === 4)
-  assert.ok((await page.locator('.pipeline-result, .pipeline-output').count()) > 0)
+  assert.equal(await page.locator('.pipeline-row.success').count(), 4)
+  assert.equal(await page.locator('.pipeline-side-result').count(), 1)
+  assert.match(await page.locator('.pipeline-side-result').innerText(), /已完成 4\/4/)
+  await page.getByRole('button', { name: '编辑步骤' }).first().click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.locator('.pipeline-row-config').count(), 1)
+  await page.getByRole('button', { name: '导出工作流' }).click()
+  const workflow = JSON.parse(await page.locator('.pipeline-io-text').inputValue())
+  assert.equal(workflow.input, undefined)
+  assert.equal(workflow.steps.length, 4)
+  await page.getByRole('button', { name: '关闭工作流文本' }).click()
   await closePanels()
 
-  log('3-panel limit / maximize / close')
-  await openCommand('二维码')
-  await openCommand('时间转换')
-  await openCommand('编码 / 解码')
-  assert.equal(await page.locator('.workspace-panel').count(), 3)
-  await page.keyboard.press('Meta+Shift+F')
+  log('normal panels: Diff only, maximize, close')
+  await openCommand('Diff 对比')
+  assert.equal(await page.locator('.workspace-panel').count(), 1)
+  await page.getByRole('button', { name: '最大化面板' }).click()
   await page.waitForTimeout(200)
   assert.equal(await page.locator('.workspace-panels.is-maximized').count(), 1)
-  await page.keyboard.press('Meta+Shift+F')
+  await page.getByRole('button', { name: '还原平铺' }).click()
   await page.waitForTimeout(150)
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '关闭面板' }).click()
   await page.waitForTimeout(150)
-  assert.equal(await page.locator('.workspace-panel').count(), 2)
-  await closePanels()
-
-  log('session restore keeps panel input edited by the user')
-  await openCommand('二维码')
-  await page.locator('.qr-textarea').fill('remember me')
-  await page.waitForTimeout(300)
-  await page.reload({ waitUntil: 'networkidle' })
-  await page.waitForTimeout(500)
-  assert.equal(await page.locator('.workspace-panel').count(), 1)
-  assert.equal(await page.locator('.workspace-panel textarea').first().inputValue(), 'remember me')
+  assert.equal(await page.locator('.workspace-panel').count(), 0)
   await closePanels()
 
   assert.deepEqual(errors, [])

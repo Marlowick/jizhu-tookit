@@ -169,7 +169,7 @@ export function QrTool({ tab }: QrToolProps) {
   return (
     <div className="small-tool qr-tool">
       <header className="small-tool-head">
-        <QrCode size={15} strokeWidth={1.8} color="#2563eb" />
+        <QrCode size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>二维码生成</strong>
         <span className="small-tool-sub">文本 → QR · PNG / SVG</span>
         <span className="small-tool-hint">本地生成 · 不上传内容</span>

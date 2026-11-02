@@ -49,7 +49,7 @@ export function CodecTool({ tab }: CodecToolProps) {
   return (
     <div className="small-tool codec-tool">
       <header className="small-tool-head">
-        <Binary size={15} strokeWidth={1.8} color="#2563eb" />
+        <Binary size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>编码 / 解码</strong>
         <span className="small-tool-sub">Base64 / URL / HTML / Unicode / Hex</span>
         <span className="small-tool-hint">输入即转换</span>

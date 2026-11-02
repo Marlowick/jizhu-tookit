@@ -26,9 +26,9 @@ export function JqSyntaxHelp({ onClose }: JqSyntaxHelpProps) {
     >
       <div className="syntax-help-dialog" role="dialog" aria-modal="true" aria-label="jq 语法速查">
         <header>
-          <BookOpen size={15} strokeWidth={1.8} color="#2563eb" />
+          <BookOpen size={15} strokeWidth={1.8} color="#81a2be" />
           <strong>jq 语法速查</strong>
-          <span>系统 jq / 内置 jaq · 表达式在 worker 副本中执行</span>
+          <span>内置 jaq · 表达式在 worker 副本中执行</span>
           <button className="btn ghost" onClick={onClose} aria-label="关闭 jq 语法">
             <X size={14} strokeWidth={1.8} />
           </button>

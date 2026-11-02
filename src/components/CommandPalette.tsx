@@ -25,12 +25,14 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
     return items
       .map((item) => {
         const title = item.title.toLowerCase()
+        const english = item.english.toLowerCase()
+        const keywords = (item.keywords ?? []).join(' ').toLowerCase()
         const description = (item.description ?? '').toLowerCase()
         const group = item.group.toLowerCase()
         const hint = (item.hint ?? '').toLowerCase()
-        const score = title.startsWith(q)
+        const score = title.startsWith(q) || english.startsWith(q)
           ? 0
-          : title.includes(q)
+          : title.includes(q) || english.includes(q) || keywords.includes(q)
             ? 1
             : group.includes(q)
               ? 2
@@ -138,7 +140,10 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                         {Icon ? <Icon size={15} strokeWidth={1.6} /> : null}
                       </span>
                       <span className="item-copy">
-                        <span>{item.title}</span>
+                        <span className="palette-item-title">
+                          {item.title}
+                          <em className="item-english">{item.english}</em>
+                        </span>
                         {item.description ? (
                           <span className="item-description">{item.description}</span>
                         ) : null}

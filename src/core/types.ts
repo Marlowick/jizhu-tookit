@@ -1,6 +1,17 @@
-export type ToolId = 'json' | 'jq' | 'diff' | 'url' | 'time' | 'codec' | 'regex' | 'qr' | 'pipeline'
+export type ToolId = 'json' | 'jq' | 'diff' | 'url' | 'time' | 'codec' | 'regex' | 'qr' | 'pipeline' | 'data' | 'curl'
 export type TabTool = ToolId | 'welcome'
-export type JqEngineChoice = 'auto' | 'system' | 'jaq'
+
+export interface EditorHighlightRange {
+  from: number
+  to: number
+}
+
+export interface EditorHighlights {
+  docId: string
+  ranges: EditorHighlightRange[]
+  current: number | null
+  seq: number
+}
 
 export interface JsonIssue {
   message: string
@@ -57,8 +68,9 @@ export interface Doc {
   rev: number
 }
 
-export type WorkspaceMode = 'plain' | 'json'
-export type WorkspacePanelType = 'jq' | 'diff' | 'qr' | 'pipeline' | 'url' | 'time' | 'regex' | 'codec'
+export type WorkspaceMode = 'plain' | 'json' | 'calc'
+export type SideToolType = 'qr' | 'url' | 'codec' | 'time' | 'jq' | 'regex' | 'pipeline' | 'data' | 'curl'
+export type WorkspacePanelType = 'jq' | 'diff' | 'qr' | 'pipeline' | 'url' | 'time' | 'regex' | 'codec' | 'data' | 'curl'
 
 export type InputSource = 'selection' | 'tab' | 'manual'
 
@@ -75,6 +87,9 @@ export interface WorkspaceState {
   panels: WorkspacePanel[]
   activePanelId: string | null
   maximizedPanelId: string | null
+  sideTool?: SideToolType
+  sideSplit?: number
+  qrSplit?: number
 }
 
 export interface Tab {
@@ -88,7 +103,6 @@ export interface Tab {
   expanded: string[]
   jqOpen?: boolean
   jqExpr?: string
-  jqEngine?: JqEngineChoice
   jqInput?: string
   jqHeight?: number
   jqSplit?: number
@@ -115,24 +129,13 @@ export interface AnalysisSummary {
   bytes: number
 }
 
-export interface SystemJqInfo {
-  path: string
-  version: string
-  sha256: string
-}
-
-export interface JqEngines {
-  system: SystemJqInfo | null
-  jaq: { version: string }
-}
-
 export interface JqRunError {
   message: string
   kind: string
 }
 
 export interface JqOutcome {
-  engine: 'system' | 'jaq'
+  engine: 'jaq'
   engineLabel: string
   version: string
   output: string
@@ -142,7 +145,7 @@ export interface JqOutcome {
   truncated: boolean
 }
 
-export type DiffMode = 'json' | 'text' | 'url'
+export type DiffMode = 'json' | 'text' | 'url' | 'curl'
 
 export interface DiffSide {
   kind: 'tab' | 'manual'

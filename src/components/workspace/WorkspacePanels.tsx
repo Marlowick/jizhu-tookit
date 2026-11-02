@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import {
   Asterisk,
+  Braces,
   Binary,
   Clock3,
   GitCompare,
@@ -11,6 +12,7 @@ import {
   Workflow,
   X,
   FileInput,
+  Terminal,
   Zap,
 } from 'lucide-react'
 import { defaultDiffState } from '../../core/diff'
@@ -35,6 +37,8 @@ const PANEL_META: Record<WorkspacePanelType, { title: string; icon: typeof Zap }
   time: { title: '时间转换', icon: Clock3 },
   regex: { title: '正则匹配', icon: Asterisk },
   codec: { title: '编码 / 解码', icon: Binary },
+  data: { title: '格式转换', icon: Braces },
+  curl: { title: 'cURL 请求', icon: Terminal },
 }
 
 const DEFAULT_REGEX: RegexState = {
@@ -143,7 +147,7 @@ function PanelContent({ panel, tab, doc }: { panel: WorkspacePanel; tab: Tab; do
     case 'time':
       return <TimeTool tab={tab} />
     case 'regex':
-      return <RegexTool tab={tab} />
+      return <RegexTool tab={tab} docId={doc.id} />
     case 'codec':
       return <CodecTool tab={tab} />
     default:
@@ -203,7 +207,7 @@ export function WorkspacePanels({ tab, doc }: WorkspacePanelsProps) {
               <button
                 className="btn ghost workspace-panel-icon"
                 onClick={() => toggleMaximize(tab.id)}
-                title={maximized ? '还原平铺（⌘⇧F）' : '最大化（⌘⇧F）'}
+                title={maximized ? '还原平铺' : '最大化面板'}
                 aria-label={maximized ? '还原平铺' : '最大化面板'}
               >
                 {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}

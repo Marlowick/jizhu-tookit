@@ -11,9 +11,10 @@ import { useAppStore } from '../store/appStore'
 interface JsonToolProps {
   tab: Tab
   doc: Doc
+  highlights?: import('../core/types').EditorHighlights | null
 }
 
-export function JsonTool({ tab, doc }: JsonToolProps) {
+export function JsonTool({ tab, doc, highlights }: JsonToolProps) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [lastValid, setLastValid] = useState<Analysis | null>(null)
   const [activePath, setActivePath] = useState<string | null>(null)
@@ -250,6 +251,8 @@ export function JsonTool({ tab, doc }: JsonToolProps) {
           <JsonEditor
             wordWrap={wordWrap}
             indent={formatIndent}
+            docId={doc.id}
+            highlights={highlights}
             text={doc.text}
             errorLine={errorLine}
             reveal={reveal}

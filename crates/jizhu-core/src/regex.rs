@@ -207,6 +207,22 @@ mod tests {
     }
 
     #[test]
+    fn supports_python_named_group_and_named_backref() {
+        let outcome = search("hello hello", r"(?P<word>\w+)\s+(?P=word)", &global());
+        assert!(outcome.error.is_none());
+        assert_eq!(outcome.count, 1);
+        assert_eq!(outcome.matches[0].text, "hello hello");
+    }
+
+    #[test]
+    fn supports_python_lookaround() {
+        let outcome = search("price: 42 USD", r"(?<=price: )\d+(?= USD)", &global());
+        assert!(outcome.error.is_none());
+        assert_eq!(outcome.count, 1);
+        assert_eq!(outcome.matches[0].text, "42");
+    }
+
+    #[test]
     fn truncates_many_matches() {
         let text = "a".repeat(MAX_MATCHES + 10);
         let outcome = search(&text, "a", &global());

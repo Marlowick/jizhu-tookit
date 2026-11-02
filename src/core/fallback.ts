@@ -409,11 +409,40 @@ function sortValue(value: unknown): unknown {
   return value
 }
 
+const INLINE_OBJECT_MAX = 79
+
+function formatInlineLocally(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(formatInlineLocally).join(', ')}]`
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+    return `{${entries.map(([key, child]) => `${JSON.stringify(key)}: ${formatInlineLocally(child)}`).join(', ')}}`
+  }
+  return JSON.stringify(value)
+}
+
+function formatValueLocally(value: unknown, depth: number, indent: string): string {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]'
+    const children = value.map((child) => `${indent.repeat(depth + 1)}${formatValueLocally(child, depth + 1, indent)}`)
+    return `[\n${children.join(',\n')}\n${indent.repeat(depth)}]`
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+    if (entries.length === 0) return '{}'
+    const inline = formatInlineLocally(value)
+    if ([...inline].length < INLINE_OBJECT_MAX) return inline
+    const children = entries.map(([key, child]) =>
+      `${indent.repeat(depth + 1)}${JSON.stringify(key)}: ${formatValueLocally(child, depth + 1, indent)}`,
+    )
+    return `{\n${children.join(',\n')}\n${indent.repeat(depth)}}`
+  }
+  return JSON.stringify(value)
+}
+
 export function formatLocally(text: string, indent: number, sortKeys: boolean): string {
   const parsed = JSON.parse(text)
   const value = sortKeys ? sortValue(parsed) : parsed
-  const space = indent === 0 ? '\t' : indent
-  return JSON.stringify(value, null, space as string | number)
+  return formatValueLocally(value, 0, indent === 0 ? '\t' : ' '.repeat(indent))
 }
 
 export function minifyLocally(text: string): string {

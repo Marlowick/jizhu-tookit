@@ -12,13 +12,17 @@ import {
   type DecorationSet,
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo } from '@codemirror/commands'
-import { search, searchKeymap } from '@codemirror/search'
+import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { json } from '@codemirror/lang-json'
 import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
-import { EDITOR_UNDO_EVENT } from '../core/editorActions'
+import { EDITOR_SEARCH_EVENT, EDITOR_UNDO_EVENT } from '../core/editorActions'
+import { editorPhrases } from '../core/i18n'
 import { DEFAULT_JSON_INDENT } from '../core/jsonIndent'
-import type { Cursor } from '../core/types'
+import { regexHighlightExtensions } from '../core/editorHighlights'
+import { modKey } from '../core/keyboard'
+import { useI18n } from '../core/useI18n'
+import type { Cursor, EditorHighlights } from '../core/types'
 
 const setErrorLine = StateEffect.define<number | null>()
 
@@ -58,7 +62,7 @@ const jizhuTheme = EditorView.theme(
     },
     '.cm-content': {
       padding: '12px 0 48px',
-      caretColor: '#1f2328',
+      caretColor: 'var(--text)',
     },
     '.cm-line': {
       padding: '0 16px 0 4px',
@@ -102,18 +106,24 @@ const jizhuTheme = EditorView.theme(
       fontFamily: 'var(--font-ui)',
     },
   },
-  { dark: false },
+  { dark: true },
 )
 
 const jizhuHighlight = HighlightStyle.define([
-  { tag: tags.propertyName, color: 'var(--syntax-key)' },
-  { tag: tags.string, color: 'var(--syntax-string)' },
-  { tag: tags.number, color: 'var(--syntax-number)' },
-  { tag: tags.bool, color: 'var(--syntax-bool)' },
-  { tag: tags.null, color: 'var(--syntax-bool)' },
-  { tag: tags.punctuation, color: 'var(--syntax-punct)' },
-  { tag: tags.brace, color: 'var(--syntax-punct)' },
-  { tag: tags.squareBracket, color: 'var(--syntax-punct)' },
+  { tag: tags.propertyName, color: 'var(--syntax-key, #81a2be)' },
+  { tag: tags.definition(tags.propertyName), color: 'var(--syntax-key, #81a2be)' },
+  { tag: tags.string, color: 'var(--syntax-string, #b5bd68)' },
+  { tag: tags.number, color: 'var(--syntax-number, #f0c674)' },
+  { tag: tags.bool, color: 'var(--syntax-bool, #cc6666)' },
+  { tag: tags.null, color: 'var(--syntax-bool, #cc6666)' },
+  { tag: tags.atom, color: 'var(--syntax-bool, #cc6666)' },
+  { tag: tags.punctuation, color: 'var(--syntax-punct, #c5c8c6)' },
+  { tag: tags.brace, color: 'var(--syntax-punct, #c5c8c6)' },
+  { tag: tags.squareBracket, color: 'var(--syntax-punct, #c5c8c6)' },
+  { tag: tags.separator, color: 'var(--syntax-punct, #c5c8c6)' },
+  { tag: tags.comment, color: 'var(--text-faint, #8a8f98)' },
+  { tag: tags.operator, color: 'var(--syntax-punct, #c5c8c6)' },
+  { tag: tags.invalid, color: 'var(--danger, #d54e53)' },
 ])
 
 interface JsonEditorProps {
@@ -122,16 +132,20 @@ interface JsonEditorProps {
   reveal: { pos: number; seq: number } | null
   wordWrap: boolean
   indent?: 0 | 2 | 4
+  docId: string
+  highlights?: EditorHighlights | null
   onChange: (text: string) => void
   onCursor: (cursor: Cursor) => void
   onSelection?: (text: string) => void
 }
 
-export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT_JSON_INDENT, onChange, onCursor, onSelection }: JsonEditorProps) {
+export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWrap, indent = DEFAULT_JSON_INDENT, onChange, onCursor, onSelection }: JsonEditorProps) {
+  const { t, language } = useI18n()
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const wrapCompartment = useRef(new Compartment()).current
   const indentCompartment = useRef(new Compartment()).current
+  const highlightCompartment = useRef(new Compartment()).current
   const onChangeRef = useRef(onChange)
   const onCursorRef = useRef(onCursor)
   const onSelectionRef = useRef(onSelection)
@@ -142,6 +156,7 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT
 
   useEffect(() => {
     if (!hostRef.current) return
+    const phrases = editorPhrases(language)
     const extensions: Extension[] = [
       lineNumbers(),
       highlightActiveLineGutter(),
@@ -153,29 +168,14 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT
       jizhuTheme,
       errorLineField,
       search({ top: true }),
-      EditorState.phrases.of({
-        Find: '查找',
-        Replace: '替换',
-        next: '下一个',
-        previous: '上一个',
-        all: '全部',
-        'match case': '区分大小写',
-        regexp: '正则',
-        'by word': '全词匹配',
-        replace: '替换',
-        'replace all': '全部替换',
-        close: '关闭',
-        'Go to line': '跳转到行',
-        'current match': '当前匹配',
-        go: '跳转',
-        'on line': '行',
-      }),
+      ...(phrases ? [EditorState.phrases.of(phrases)] : []),
       wrapCompartment.of(wordWrap ? EditorView.lineWrapping : []),
+      highlightCompartment.of(EditorView.decorations.of(regexHighlightExtensions(docId, highlights))),
       indentCompartment.of([
         indentUnit.of(indent === 0 ? '\t' : ' '.repeat(indent)),
         EditorState.tabSize.of(indent === 0 ? 4 : indent),
       ]),
-      placeholder('在这里输入或粘贴 JSON…'),
+      placeholder(`${t('editor.placeholder.json')}\n${t('editor.hint', { mod: modKey('⇧P') })}`),
       EditorView.contentAttributes.of({ 'aria-label': 'JSON 文本编辑器' }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChangeRef.current(update.state.doc.toString())
@@ -248,6 +248,25 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT
   }, [reveal?.seq])
 
   useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: highlightCompartment.reconfigure(
+        EditorView.decorations.of(regexHighlightExtensions(docId, highlights)),
+      ),
+    })
+  }, [docId, highlights, highlightCompartment])
+
+  useEffect(() => {
+    if (!highlights || highlights.current == null) return
+    const view = viewRef.current
+    const range = highlights.ranges[highlights.current]
+    if (!view || !range) return
+    view.dispatch({
+      selection: { anchor: range.from, head: range.to },
+      effects: EditorView.scrollIntoView(range.from, { y: 'center' }),
+    })
+  }, [highlights?.seq])
+
+  useEffect(() => {
     const onUndo = () => {
       const view = viewRef.current
       if (!view) return
@@ -256,6 +275,17 @@ export function JsonEditor({ text, errorLine, reveal, wordWrap, indent = DEFAULT
     }
     window.addEventListener(EDITOR_UNDO_EVENT, onUndo)
     return () => window.removeEventListener(EDITOR_UNDO_EVENT, onUndo)
+  }, [])
+
+  useEffect(() => {
+    const onSearch = () => {
+      const view = viewRef.current
+      if (!view) return
+      view.focus()
+      openSearchPanel(view)
+    }
+    window.addEventListener(EDITOR_SEARCH_EVENT, onSearch)
+    return () => window.removeEventListener(EDITOR_SEARCH_EVENT, onSearch)
   }, [])
 
   return <div className="editor-host" ref={hostRef} />

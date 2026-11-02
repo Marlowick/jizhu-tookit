@@ -28,6 +28,5 @@ src-tauri/gen/
 docs/
 audit/
 assets/
-RELEASING.md
 scripts/shot.mjs
 scripts/audit-deps.sh

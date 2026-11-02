@@ -60,12 +60,16 @@ function NestedUrlParams({ value, depth }: { value: string; depth: number }) {
 
 interface UrlToolProps {
   tab: Tab
+  embedded?: boolean
+  source?: string
+  onSourceChange?: (text: string) => void
 }
 
-export function UrlTool({ tab }: UrlToolProps) {
+export function UrlTool({ tab, embedded = false, source, onSourceChange }: UrlToolProps) {
   const setUrlTool = useAppStore((state) => state.setUrlTool)
   const showToast = useAppStore((state) => state.showToast)
-  const state = tab.urlTool ?? { input: '', decode: true }
+  const baseState = tab.urlTool ?? { input: '', decode: true }
+  const state = embedded && source !== undefined ? { ...baseState, input: source } : baseState
   const parsed = useMemo(() => parseUrlInput(state.input), [state.input])
   const [selectedJson, setSelectedJson] = useState<number | null>(null)
   const [editingJson, setEditingJson] = useState(false)
@@ -84,6 +88,10 @@ export function UrlTool({ tab }: UrlToolProps) {
     if (patch.input !== undefined && patch.input !== state.input) {
       setUrlUpdated(true)
       setUrlTick((value) => value + 1)
+      if (embedded) {
+        onSourceChange?.(patch.input)
+        return
+      }
     }
     setUrlTool(tab.id, { ...state, ...patch })
   }
@@ -164,12 +172,24 @@ export function UrlTool({ tab }: UrlToolProps) {
   return (
     <div className="small-tool url-tool">
       <header className="small-tool-head">
-        <Link size={15} strokeWidth={1.8} color="#2563eb" />
+        <Link size={15} strokeWidth={1.8} color="#81a2be" />
         <strong>URL 解析</strong>
         <span className="small-tool-sub">结构拆解 · 参数编辑 · JSON 探测</span>
         <span className="small-tool-hint">编辑参数实时重组 URL</span>
       </header>
 
+      {embedded ? (
+        <div className="url-side-toolbar">
+          <span>来源：左侧编辑器 · {state.input.length} 字符</span>
+          <button
+            className={`btn ${state.decode ? 'active' : ''}`}
+            onClick={() => update({ decode: !state.decode })}
+            title="切换参数值的显示方式"
+          >
+            URL 解码
+          </button>
+        </div>
+      ) : (
       <div className="url-input-bar">
         <span className="url-input-label">URL</span>
         <input
@@ -202,6 +222,7 @@ export function UrlTool({ tab }: UrlToolProps) {
           清空
         </button>
       </div>
+      )}
 
       <div className="url-body">
         {!state.input.trim() ? (
