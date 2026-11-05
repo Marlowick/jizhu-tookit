@@ -20,6 +20,7 @@ assert.equal(await page.locator('.status-mode').innerText(), 'CALC')
 assert.equal(await page.locator('.calc-help-panel').count(), 1)
 assert.match(await page.locator('.calc-help-panel').innerText(), /内置函数/)
 assert.match(await page.locator('.calc-help-panel').innerText(), /sqrt/)
+assert.match(await page.locator('.calc-help-panel').innerText(), /datetime/)
 await page.getByRole('button', { name: '关闭 Calc 示例' }).click()
 
 await page.locator('.cm-content').click()
@@ -80,6 +81,14 @@ assert.deepEqual(await page.locator('.calc-result').allInnerTexts(), [
   '= 1',
   '= 5',
 ])
+
+// datetime(timestamp) renders a readable local time
+await page.locator('.cm-line').last().click()
+await page.keyboard.press('End')
+await page.keyboard.insertText('\ndatetime(1718092800)')
+await page.waitForTimeout(700)
+const withTime = await page.locator('.calc-result').allInnerTexts()
+assert.match(withTime.at(-1) ?? '', /^= \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 
 assert.deepEqual(errors, [])
 await page.screenshot({ path: '/tmp/jizhu-calc-check.png' })

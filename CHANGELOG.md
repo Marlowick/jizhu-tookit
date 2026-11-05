@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — Tiling workspace · 2026-11-02
+## 1.0.0 — Tiling workspace · 2026-11-05
 
 ### Added
 
@@ -16,6 +16,11 @@
 - Pipeline workflow export now contains only version/name/steps and never editor input.
 - Shortcuts: added ⌘1–⌘9 tab switching; ⌘W asks before closing the current tool/panel or a tab with content, and the confirmation names the target. Removed ⌘, ⌘⇧F, Ctrl+Alt+←/→, Alt+1–4 and the global Esc tool-close shortcut.
 - Command palette commands now expose English aliases; mode changes use a Plain/JSON/Calc picker.
+- Interface zoom: ⌘= / ⌘- in 10% steps, ⌘0 resets to 100%, persisted in settings.
+- Added Ghostty Dark, Solarized Light and Solarized Dark themes.
+- JSON editor now has a fold gutter, fold placeholders and CodeMirror fold keybindings.
+- Clearing a document and pasting JSON auto-switches to JSON; pasting non-JSON switches to Plain.
+- Calc adds `datetime(timestamp)` / `timestamp(timestamp)` readable local-time results.
 - Added YAML / TOML ↔ JSON data conversion.
 - Added cURL request tool (system curl, argument arrays, explicit send).
 - Added cURL response diff mode with original command, sorted response headers, and JSON-formatted body.

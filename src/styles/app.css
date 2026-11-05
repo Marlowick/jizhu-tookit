@@ -8371,3 +8371,260 @@ body,
   color: var(--text-faint);
   text-align: center;
 }
+
+/* -------------------------------------------------------------------------
+ * Solarized themes
+ * Base03–base3 palette by Ethan Schoonover (MIT).
+ * ---------------------------------------------------------------------- */
+[data-theme-variant="solarized-dark"] {
+  --bg-app: #002b36;
+  --bg-subtle: #073642;
+  --bg-panel: #073642;
+  --bg-surface: #002b36;
+  --border: #0f4b56;
+  --border-strong: #586e75;
+  --border-soft: #073642;
+  --text: #93a1a1;
+  --text-muted: #839496;
+  --text-faint: #657b83;
+  --accent: #268bd2;
+  --accent-soft: #0b3a4a;
+  --accent-border: #268bd2;
+  --danger: #dc322f;
+  --danger-soft: #3b1a1a;
+  --success: #859900;
+  --success-soft: #1f2d1a;
+  --warning: #b58900;
+  --warning-soft: #2e2a14;
+  --syntax-key: #268bd2;
+  --syntax-string: #859900;
+  --syntax-number: #b58900;
+  --syntax-bool: #dc322f;
+  --syntax-punct: #93a1a1;
+  --cm-selection: #1e5a6b;
+  --cm-search: #3b3210;
+  --cm-search-border: #b58900;
+  --shadow-card: 0 4px 16px rgb(0 0 0 / 28%);
+  --shadow-pop: 0 24px 64px rgb(0 0 0 / 55%), 0 2px 8px rgb(0 0 0 / 32%);
+  color-scheme: dark;
+}
+
+[data-theme-variant="solarized-dark"] body,
+[data-theme-variant="solarized-dark"] .app {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+[data-theme-variant="solarized-dark"] ::-webkit-scrollbar-thumb {
+  background: #586e75;
+}
+
+[data-theme-variant="solarized-dark"] .tab:hover,
+[data-theme-variant="solarized-dark"] .btn:hover,
+[data-theme-variant="solarized-dark"] .settings-nav button:hover,
+[data-theme-variant="solarized-dark"] .statusbar-settings:hover {
+  background: #073642;
+}
+
+[data-theme-variant="solarized-dark"] .btn.primary {
+  color: #002b36;
+}
+
+[data-theme-variant="solarized-dark"] .toast,
+[data-theme-variant="solarized-dark"] .calc-help-panel {
+  background: #073642;
+}
+
+[data-theme-variant="solarized-dark"] .qr-zoom-btn {
+  background: rgb(0 43 54 / 88%);
+}
+
+[data-theme-variant="solarized-dark"] .cm-line.cm-error-line {
+  background: rgb(220 50 47 / 14%);
+}
+
+[data-theme-variant="solarized-dark"] .url-seg.protocol {
+  background: #1f2d1a;
+  color: #859900;
+}
+
+[data-theme-variant="solarized-dark"] .url-seg.host {
+  background: #0b3a4a;
+  color: #268bd2;
+}
+
+[data-theme-variant="solarized-dark"] .url-seg.path {
+  background: #2d2440;
+  color: #6c71c4;
+}
+
+[data-theme-variant="solarized-dark"] .url-seg.query {
+  background: #2e2a14;
+  color: #b58900;
+}
+
+[data-theme-variant="solarized-dark"] .url-seg.hash {
+  background: #073642;
+  color: #93a1a1;
+}
+
+[data-theme-variant="solarized-light"] {
+  --bg-app: #eee8d5;
+  --bg-subtle: #e6dfc8;
+  --bg-panel: #eee8d5;
+  --bg-surface: #fdf6e3;
+  --border: #d5cdb4;
+  --border-strong: #c9c0a4;
+  --border-soft: #e9e2cc;
+  --text: #586e75;
+  --text-muted: #657b83;
+  --text-faint: #93a1a1;
+  --accent: #268bd2;
+  --accent-soft: #e4ebdf;
+  --accent-border: #8ab6cc;
+  --danger: #dc322f;
+  --danger-soft: #f3d9d6;
+  --success: #859900;
+  --success-soft: #e5ead3;
+  --warning: #b58900;
+  --warning-soft: #f4eccf;
+  --syntax-key: #268bd2;
+  --syntax-string: #859900;
+  --syntax-number: #b58900;
+  --syntax-bool: #dc322f;
+  --syntax-punct: #586e75;
+  --cm-selection: #d7d1ba;
+  --cm-search: #f7e7a6;
+  --cm-search-border: #b58900;
+  --shadow-card: 0 4px 16px rgb(88 110 117 / 8%);
+  --shadow-pop: 0 24px 64px rgb(88 110 117 / 18%), 0 2px 8px rgb(88 110 117 / 8%);
+  color-scheme: light;
+}
+
+[data-theme="light"] body,
+[data-theme="light"] .app {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+[data-theme="light"] ::selection {
+  background: #d7d1ba;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #c9c0a4;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #b8ae90;
+}
+
+[data-theme="light"] .tab:hover,
+[data-theme="light"] .btn:hover,
+[data-theme="light"] .settings-nav button:hover,
+[data-theme="light"] .statusbar-settings:hover {
+  background: #e6dfc8;
+}
+
+[data-theme="light"] .btn.primary {
+  color: #fdf6e3;
+}
+
+[data-theme="light"] .toast,
+[data-theme="light"] .calc-help-panel {
+  background: #eee8d5;
+  border-color: var(--border);
+}
+
+[data-theme="light"] .settings-switch span {
+  background: #c9c0a4;
+}
+
+[data-theme="light"] .qr-zoom-btn {
+  background: rgb(253 246 227 / 90%);
+}
+
+[data-theme="light"] .m4-error,
+[data-theme="light"] .diff-error,
+[data-theme="light"] .pipeline-error-card {
+  background: #f3d9d6;
+  border-color: #e5b8b4;
+  color: #b62f2c;
+}
+
+[data-theme="light"] .pipeline-step-card.failed {
+  background-color: #f3d9d6;
+}
+
+[data-theme="light"] .cm-line.cm-error-line {
+  background: rgb(220 50 47 / 10%);
+}
+
+[data-theme="light"] .diff-line-row.change .diff-cell.a,
+[data-theme="light"] .diff-line-row.remove .diff-cell.a,
+[data-theme="light"] .url-diff-row.change .url-value.a,
+[data-theme="light"] .url-diff-row.remove .url-value.a {
+  background: #f3d9d6;
+}
+
+[data-theme="light"] .diff-line-row.change .diff-cell.b,
+[data-theme="light"] .diff-line-row.add .diff-cell.b,
+[data-theme="light"] .url-diff-row.change .url-value.b,
+[data-theme="light"] .url-diff-row.add .url-value.b {
+  background: #e5ead3;
+}
+
+[data-theme="light"] .diff-cell.a .diff-inline {
+  background: #e8b4b0;
+}
+
+[data-theme="light"] .diff-cell.b .diff-inline {
+  background: #cdd8ac;
+}
+
+[data-theme="light"] .url-seg.protocol {
+  background: #e5ead3;
+  color: #657b00;
+}
+
+[data-theme="light"] .url-seg.host {
+  background: #e3edf3;
+  color: #1f6f9f;
+}
+
+[data-theme="light"] .url-seg.path {
+  background: #ebe7f2;
+  color: #6c71c4;
+}
+
+[data-theme="light"] .url-seg.query {
+  background: #f4eccf;
+  color: #8b6a00;
+}
+
+[data-theme="light"] .url-seg.hash {
+  background: #eee8d5;
+  color: #586e75;
+}
+
+[data-theme="light"] .regex-highlight mark {
+  background: rgb(38 139 210 / 20%);
+}
+
+[data-theme="light"] .settings-pill.ok {
+  background: #e5ead3;
+  border-color: #cdd8ac;
+  color: #657b00 !important;
+}
+
+[data-theme="light"] .cm-panels,
+[data-theme="light"] .cm-panel {
+  color: var(--text);
+}
+
+[data-theme="light"] .cm-textfield,
+[data-theme="light"] .cm-button {
+  background: var(--bg-surface);
+  color: var(--text);
+  border-color: var(--border);
+}

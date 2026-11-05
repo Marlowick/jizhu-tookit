@@ -109,7 +109,8 @@ count = 8
 price * count
 sqrt(16)
 round(1.234, 2)
-min(2, 8)`
+min(2, 8)
+datetime(1718092800)`
 
 class CalcResultWidget extends WidgetType {
   constructor(readonly result: CalcLineResult) {
@@ -119,6 +120,7 @@ class CalcResultWidget extends WidgetType {
   eq(other: CalcResultWidget): boolean {
     return (
       other.result.value === this.result.value &&
+      other.result.display === this.result.display &&
       other.result.error === this.result.error &&
       other.result.substituted === this.result.substituted
     )
@@ -130,7 +132,7 @@ class CalcResultWidget extends WidgetType {
     if (this.result.error) {
       node.textContent = `! ${this.result.error}`
     } else {
-      const value = formatCalcNumber(this.result.value ?? 0)
+      const value = this.result.display ?? formatCalcNumber(this.result.value ?? 0)
       node.textContent = this.result.substituted ? `${this.result.substituted} = ${value}` : `= ${value}`
     }
     node.title = this.result.error ?? '计算结果'
@@ -152,6 +154,7 @@ function sameCalcResults(left: CalcLineResult[], right: CalcLineResult[]): boole
       item.line === other.line &&
       item.to === other.to &&
       Object.is(item.value, other.value) &&
+      item.display === other.display &&
       item.error === other.error &&
       item.substituted === other.substituted &&
       item.assignment === other.assignment
@@ -393,12 +396,13 @@ count = 8
 price * count    → 2 * 8 = 16
 sqrt(16)         → 4
 round(1.234, 2)  → 1.23
+datetime(1718092800) → 2024-06-11 16:00:00
 log(100)         → 2`}</pre>
               <div className="calc-help-functions">
                 <span>内置函数</span>
                 <code>abs</code><code>sqrt</code><code>round</code><code>floor</code>
                 <code>ceil</code><code>min</code><code>max</code><code>pow</code><code>mod</code>
-                <code>log</code><code>ln</code><code>exp</code><code>sin</code><code>cos</code><code>tan</code><code>sum</code>
+                <code>log</code><code>ln</code><code>exp</code><code>sin</code><code>cos</code><code>tan</code><code>sum</code><code>datetime</code>
                 <code>pi</code><code>e</code>
               </div>
               <p className="calc-help-note">输入停顿约 400ms 后更新；变量替换会显示在答案前，例如 <code>2 * 8 = 16</code>。</p>

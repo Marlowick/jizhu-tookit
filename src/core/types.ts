@@ -297,13 +297,14 @@ export interface PipelineState {
   split?: number
 }
 
-export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'ghostty' | 'solarized-dark' | 'solarized-light'
 export type Language = 'zh-CN' | 'en-US'
 
 export interface AppSettings {
   theme: ThemeMode
   language: Language
   editorFontSize: number
+  uiScale: number
   formatIndent: 2 | 4 | 0
   wordWrap: boolean
 }

@@ -21,6 +21,9 @@ const SHORTCUTS: Array<[string, string]> = [
   [modKey('⇧Z'), 'settings.shortcut.redo'],
   [modKey('1..9'), 'settings.shortcut.workspaces'],
   [modKey('W'), 'settings.shortcut.closeTool'],
+  [modKey('='), 'settings.shortcut.zoomIn'],
+  [modKey('-'), 'settings.shortcut.zoomOut'],
+  [modKey('0'), 'settings.shortcut.zoomReset'],
   ['Tab / ⇧Tab', 'settings.shortcut.indent'],
   ['Esc', 'settings.shortcut.escape'],
 ]
@@ -91,9 +94,35 @@ export function SettingsDialog() {
                 <div className="settings-row">
                   <div>
                     <strong>{t('settings.theme.label')}</strong>
-                    <span>{t('settings.theme.fixed')}</span>
+                    <span>{t('settings.theme.desc')}</span>
                   </div>
-                  <span className="settings-pill">{t('settings.theme.dark')}</span>
+                  <select
+                    value={settings.theme}
+                    onChange={(event) => updateSettings({ theme: event.target.value as typeof settings.theme })}
+                  >
+                    <option value="ghostty">{t('settings.theme.ghostty')}</option>
+                    <option value="solarized-dark">{t('settings.theme.solarizedDark')}</option>
+                    <option value="solarized-light">{t('settings.theme.solarizedLight')}</option>
+                  </select>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <strong>{t('settings.scale.label')}</strong>
+                    <span>{t('settings.scale.desc')}</span>
+                  </div>
+                  <select
+                    value={settings.uiScale}
+                    onChange={(event) => updateSettings({ uiScale: Number(event.target.value) })}
+                  >
+                    <option value={0.8}>80%</option>
+                    <option value={0.9}>90%</option>
+                    <option value={1}>100%</option>
+                    <option value={1.1}>110%</option>
+                    <option value={1.2}>120%</option>
+                    <option value={1.3}>130%</option>
+                    <option value={1.4}>140%</option>
+                    <option value={1.5}>150%</option>
+                  </select>
                 </div>
                 <div className="settings-row">
                   <div>

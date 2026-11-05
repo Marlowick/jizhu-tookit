@@ -14,7 +14,7 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo } from '@codemirror/commands'
 import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { json } from '@codemirror/lang-json'
-import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language'
+import { HighlightStyle, codeFolding, foldGutter, foldKeymap, indentUnit, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { EDITOR_SEARCH_EVENT, EDITOR_UNDO_EVENT } from '../core/editorActions'
 import { editorPhrases } from '../core/i18n'
@@ -72,6 +72,22 @@ const jizhuTheme = EditorView.theme(
       color: 'var(--text-faint)',
       border: 'none',
       paddingLeft: '8px',
+    },
+    '.cm-foldGutter .cm-gutterElement': {
+      color: 'var(--text-faint)',
+      padding: '0 3px',
+      cursor: 'pointer',
+    },
+    '.cm-foldGutter .cm-gutterElement:hover': {
+      color: 'var(--text)',
+    },
+    '.cm-foldPlaceholder': {
+      background: 'var(--bg-panel)',
+      border: '1px solid var(--border)',
+      borderRadius: '3px',
+      color: 'var(--text-muted)',
+      margin: '0 4px',
+      padding: '0 3px',
     },
     '.cm-lineNumbers .cm-gutterElement': {
       minWidth: '38px',
@@ -159,6 +175,8 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
     const phrases = editorPhrases(language)
     const extensions: Extension[] = [
       lineNumbers(),
+      codeFolding(),
+      foldGutter(),
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
@@ -189,6 +207,7 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
       }),
       keymap.of([
         { key: 'Ctrl-z', run: undo, preventDefault: true },
+        ...foldKeymap,
         ...searchKeymap,
         ...defaultKeymap,
         ...historyKeymap,

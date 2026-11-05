@@ -7,7 +7,7 @@
 No account, no telemetry. Local processing by default; only explicit cURL request/diff actions contact a target URL.
 
 > **Public version 1.0.0 · Tiling workspace · source-only**
-> macOS-first. The app is a dark tiling workspace with plain/JSON editors and tool panels.
+> macOS-first. The app is a themeable tiling workspace with plain/JSON editors and tool panels.
 
 ![jizhu tiling workspace: JSON mode with synchronized tree and syntax-highlighted editor](screenshots/tiling-json-mode.png)
 
@@ -25,17 +25,19 @@ This repository is **source-only**:
 - A workspace is a Plain / JSON / Calc editor; one normal Diff panel or one side tool can be open at a time.
 - Panels and side tools open from the command palette.
 - `Esc` no longer closes tools; `⌘W` asks before closing the current tool/panel or a tab with content, and the confirmation names the exact tool or workspace. Empty tabs close directly; tool state stays on the tab and is restored on reopen.
-- The interface is **dark-only**.
+- The default theme is Ghostty Dark; Solarized Light and Solarized Dark are available in Settings.
 
 ## Features
 
 - **Editor**
+  - JSON mode includes a fold gutter, fold placeholders and CodeMirror fold keybindings.
   - Plain, JSON and Calc modes; switching to JSON opens the synchronized tree by default (hide/show supported).
   - Tree min width is 150px; JSON indent is configurable, default 2 spaces.
   - CodeMirror 6: line numbers, search, undo/redo, selection, large-document handling.
   - `⌘F` find/replace; `Ctrl+Z` or the command palette undoes.
   - UTF-8 and LF displayed in the status bar; word wrap is on by default and toggleable from the command palette.
   - No file open/save in this milestone — content is typed/pasted and restored locally.
+  - After clearing all text, a pasted JSON object/array switches to JSON mode; any other paste switches to Plain.
 - **Command palette** (`⌘⇧P`)
   - Open tools, choose the editor mode (Plain / JSON / Calc), undo, format/minify, copy, open settings.
   - Every command has a searchable English alias (e.g. `settings` finds 设置).
@@ -55,10 +57,10 @@ This repository is **source-only**:
   - cURL request supports common flags (`-X`, `-H`, `-d`, `--json`, `-L`, `-k`, `-u`, `-A`, `-b`); multipart forms and @file bodies are not supported yet.
   - Pipeline uses the left editor as its only input; its right pane has numbered step rows on top and results below, with inline step configuration. jq/codec/regex/count steps and workflow import/export remains; exported workflow JSON contains only version/name/steps, never editor data.
   - QR preview supports copy/zoom; file export is intentionally not exposed in this milestone.
-- **Settings**: dark theme fixed, editor font size, JSON indent, language, shortcuts, about. Wrap defaults on. Open it from the command palette; `⌘,` is no longer bound.
+- **Settings**: Ghostty / Solarized theme, editor font size, interface scale, JSON indent, language, shortcuts, about. Wrap defaults on. Open it from the command palette; `⌘,` is no longer bound.
   - The bottom status bar is interactive: click `PLAIN`/`JSON`/`CALC` to switch the editor language; click `⌘F 搜索` to open the editor find bar; click `⌘⇧P 命令` to open the command palette.
-- **Calc mode (MVP)**: four-operator arithmetic, precedence/parentheses, one independent expression per line, and inline results at line end. Evaluation is debounced by 400ms; existing answers stay visible while typing and are only rebuilt when the calculated data actually changes. Variables (`price = 100`, `price * 2`) are substituted in the answer, e.g. `2 * 8 = 16`; a line containing only a variable shows its value. Built-ins: `abs, sqrt, round, floor, ceil, min, max, pow, mod, log` (base 10), `ln, exp, sin, cos, tan` (radians), `sum`, plus constants `pi` and `e`. A Calc help card appears for empty documents with examples and a fill button. Syntax, undefined-variable and division-by-zero errors stay inline; prose lines are ignored.
-- **Theme**: Ghostty-inspired dark palette (`#282c34` base, `#ffffff` foreground, Tomorrow Night ANSI colors), mapped to UI surfaces and syntax highlighting. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Calc mode (MVP)**: four-operator arithmetic, precedence/parentheses, one independent expression per line, and inline results at line end. Evaluation is debounced by 400ms; existing answers stay visible while typing and are only rebuilt when the calculated data actually changes. Variables (`price = 100`, `price * 2`) are substituted in the answer, e.g. `2 * 8 = 16`; a line containing only a variable shows its value. Built-ins: `abs, sqrt, round, floor, ceil, min, max, pow, mod, log` (base 10), `ln, exp, sin, cos, tan` (radians), `sum`, `datetime(timestamp)` / `timestamp(timestamp)` for readable local time, plus constants `pi` and `e`. A Calc help card appears for empty documents with examples and a fill button. Syntax, undefined-variable and division-by-zero errors stay inline; prose lines are ignored.
+- **Theme**: Ghostty Dark default, plus Solarized Light and Solarized Dark, mapped to UI surfaces and syntax highlighting. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **Security**: strict CSP, `withGlobalTauri: false`, no fs/shell/http plugins, jaq/regex sandboxed in worker subprocesses. jq no longer invokes a system `jq` binary. The cURL tool invokes the fixed system `/usr/bin/curl` binary with argument arrays (no shell interpolation) and only after an explicit user action.
 - **Session restore**: workspace tabs, documents, panel layout and tool state persist locally.
 
@@ -71,6 +73,8 @@ This repository is **source-only**:
 | `⌘Z` / `⌘⇧Z` / `Ctrl+Z` | Undo / redo |
 | `Tab` / `Shift+Tab` | Indent / outdent |
 | `⌘1`–`⌘9` | Switch tab; no-op when missing (never types a digit) |
+| `⌘=` / `⌘-` | Zoom interface in / out (10% steps) |
+| `⌘0` | Reset interface zoom to 100% |
 | `⌘W` | Close tool/panel or tab; confirmation names the target |
 | `Esc` | Close dialog / cancel confirmation (does not close tools) |
 

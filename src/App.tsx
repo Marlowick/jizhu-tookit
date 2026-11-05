@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import {
   AlignJustify,
   Asterisk,
@@ -11,12 +12,15 @@ import {
   Minimize2,
   Plus,
   QrCode,
+  RotateCcw,
   Settings,
   Terminal,
   Undo2,
   Workflow,
   WrapText,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { CommandPalette } from './components/CommandPalette'
@@ -35,7 +39,8 @@ import {
   isTauri,
   minifyJson,
 } from './core/ipc'
-import { isModPressed } from './core/keyboard'
+import { isModPressed, modKey } from './core/keyboard'
+import { clampUiScale, UI_SCALE_STEP } from './core/uiScale'
 import type { WorkspacePanelType } from './core/types'
 import {
   selectActiveDoc,
@@ -67,6 +72,17 @@ interface ClosePrompt {
   label: string
 }
 
+function isJsonDocument(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false
+  try {
+    JSON.parse(trimmed)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const activeTab = useAppStore(selectActiveTab)
   const activeDoc = useAppStore(selectActiveDoc)
@@ -91,13 +107,91 @@ export default function App() {
   const workspace = activeTab?.workspace
   const [modePickerOpen, setModePickerOpen] = useState(false)
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
+  const clearedTabs = useRef(new Set<string>())
+  const previousDocId = useRef('')
+  const previousText = useRef('')
 
   useEffect(() => {
-    document.documentElement.dataset.theme = 'dark'
-    document.documentElement.style.colorScheme = 'dark'
+    const light = settings.theme === 'solarized-light'
+    document.documentElement.dataset.theme = light ? 'light' : 'dark'
+    document.documentElement.dataset.themeVariant = settings.theme
+    document.documentElement.style.colorScheme = light ? 'light' : 'dark'
     document.documentElement.lang = settings.language
     document.documentElement.style.setProperty('--editor-font-size', `${settings.editorFontSize}px`)
-  }, [settings.editorFontSize, settings.language])
+  }, [settings.editorFontSize, settings.language, settings.theme])
+
+  useEffect(() => {
+    if (!activeDoc || !activeTab) return
+    if (previousDocId.current !== activeDoc.id) {
+      previousDocId.current = activeDoc.id
+      previousText.current = activeDoc.text
+      return
+    }
+    if (activeDoc.text.length === 0 && previousText.current.trim().length > 0) {
+      clearedTabs.current.add(activeTab.id)
+    }
+    if (activeDoc.text.length > 0) clearedTabs.current.delete(activeTab.id)
+    previousText.current = activeDoc.text
+  }, [activeDoc, activeTab])
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const tab = selectActiveTab(useAppStore.getState())
+      const doc = selectActiveDoc(useAppStore.getState())
+      if (!tab || !doc || doc.text.length > 0 || !clearedTabs.current.has(tab.id)) return
+      const target = event.target as HTMLElement | null
+      const active = document.activeElement as HTMLElement | null
+      if (!target?.closest('.cm-editor') && !active?.closest('.cm-editor')) return
+      const pasted = event.clipboardData?.getData('text/plain') ?? ''
+      if (!pasted) return
+      event.preventDefault()
+      const looksJson = isJsonDocument(pasted)
+      setText(doc.id, pasted)
+      setWorkspaceMode(tab.id, looksJson ? 'json' : 'plain')
+      clearedTabs.current.delete(tab.id)
+      showToast(looksJson ? '已识别为 JSON，切换到 JSON 模式' : '已切换到纯文本模式')
+    }
+    window.addEventListener('paste', onPaste, true)
+    return () => window.removeEventListener('paste', onPaste, true)
+  }, [setText, setWorkspaceMode, showToast])
+
+  useEffect(() => {
+    const scale = clampUiScale(settings.uiScale)
+    document.documentElement.dataset.uiScale = String(scale)
+    let cancelled = false
+    const apply = async () => {
+      if (isTauri) {
+        document.documentElement.style.removeProperty('zoom')
+        try {
+          await getCurrentWebview().setZoom(scale)
+          return
+        } catch {
+          // Permission or platform fallback: use CSS zoom below.
+        }
+      }
+      if (!cancelled) document.documentElement.style.setProperty('zoom', String(scale))
+    }
+    void apply()
+    return () => {
+      cancelled = true
+    }
+  }, [settings.uiScale])
+
+  const scaleBy = useCallback(
+    (delta: number) => {
+      const current = useAppStore.getState().settings.uiScale
+      const next = clampUiScale(current + delta)
+      if (next === current) return
+      updateSettings({ uiScale: next })
+      showToast(`界面缩放 ${Math.round(next * 100)}%`)
+    },
+    [showToast, updateSettings],
+  )
+
+  const resetUiScale = useCallback(() => {
+    updateSettings({ uiScale: 1 })
+    showToast('界面缩放已恢复 100%')
+  }, [showToast, updateSettings])
 
   const handleFormat = useCallback(async () => {
     if (!activeDoc) return
@@ -166,6 +260,24 @@ export default function App() {
         return
       }
 
+      if (mod && !event.altKey && (event.code === 'Equal' || key === '=' || key === '+')) {
+        event.preventDefault()
+        scaleBy(UI_SCALE_STEP)
+        return
+      }
+
+      if (mod && !event.altKey && (event.code === 'Minus' || key === '-' || key === '_')) {
+        event.preventDefault()
+        scaleBy(-UI_SCALE_STEP)
+        return
+      }
+
+      if (mod && !event.shiftKey && !event.altKey && (event.code === 'Digit0' || key === '0')) {
+        event.preventDefault()
+        resetUiScale()
+        return
+      }
+
       if (mod && !event.shiftKey && !event.altKey && key === 'w') {
         event.preventDefault()
         if (closePrompt || paletteOpen || settingsOpen || modePickerOpen) return
@@ -192,6 +304,8 @@ export default function App() {
     modePickerOpen,
     paletteOpen,
     requestClose,
+    resetUiScale,
+    scaleBy,
     setPaletteOpen,
     settingsOpen,
   ])
@@ -270,6 +384,39 @@ export default function App() {
         icon: Plus,
         run: newWorkspace,
       },
+      {
+        id: 'zoom-in',
+        title: '放大界面',
+        english: 'Zoom in',
+        keywords: ['zoom', 'scale', 'larger', 'interface', 'ui'],
+        description: `当前 ${Math.round(settings.uiScale * 100)}%，按 10% 放大`,
+        group: '全局',
+        hint: modKey('='),
+        icon: ZoomIn,
+        run: () => scaleBy(UI_SCALE_STEP),
+      },
+      {
+        id: 'zoom-out',
+        title: '缩小界面',
+        english: 'Zoom out',
+        keywords: ['zoom', 'scale', 'smaller', 'interface', 'ui'],
+        description: `当前 ${Math.round(settings.uiScale * 100)}%，按 10% 缩小`,
+        group: '全局',
+        hint: modKey('-'),
+        icon: ZoomOut,
+        run: () => scaleBy(-UI_SCALE_STEP),
+      },
+      {
+        id: 'zoom-reset',
+        title: '恢复界面缩放',
+        english: 'Reset zoom',
+        keywords: ['zoom', 'reset', 'scale', '100', 'interface', 'ui'],
+        description: '恢复到 100%',
+        group: '全局',
+        hint: modKey('0'),
+        icon: RotateCcw,
+        run: resetUiScale,
+      },
     )
 
     if (workspace.mode === 'json' && activeDoc) {
@@ -319,8 +466,11 @@ export default function App() {
     handleMinify,
     newWorkspace,
     openWorkspacePanel,
+    resetUiScale,
+    scaleBy,
     setSettingsOpen,
     setWorkspaceMode,
+    settings.uiScale,
     settings.wordWrap,
     showToast,
     updateSettings,

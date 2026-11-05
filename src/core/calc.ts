@@ -8,6 +8,8 @@ export interface CalcLineResult {
   /** 结果 widget 在整篇文本中的插入位置（行末，去掉尾随空白）。 */
   to: number
   value?: number
+  /** Human-readable result for time-like functions (e.g. datetime). */
+  display?: string
   error?: string
   assignment?: string
   /** 表达式中的变量已被替换成具体值，例如 price * count -> 2 * 8。 */
@@ -155,6 +157,22 @@ const FUNCTIONS: Record<string, CalcFunction> = {
   sin: { minArgs: 1, maxArgs: 1, apply: ([value]) => Math.sin(value) },
   cos: { minArgs: 1, maxArgs: 1, apply: ([value]) => Math.cos(value) },
   tan: { minArgs: 1, maxArgs: 1, apply: ([value]) => Math.tan(value) },
+  datetime: {
+    minArgs: 1,
+    maxArgs: 1,
+    apply: ([value]) => {
+      timestampMs(value)
+      return value
+    },
+  },
+  timestamp: {
+    minArgs: 1,
+    maxArgs: 1,
+    apply: ([value]) => {
+      timestampMs(value)
+      return value
+    },
+  },
   sum: {
     minArgs: 1,
     maxArgs: Number.POSITIVE_INFINITY,
@@ -288,6 +306,29 @@ class Parser {
   }
 }
 
+function timestampMs(value: number): number {
+  const millis = Math.abs(value) >= 1e12 ? value : value * 1000
+  if (!Number.isFinite(millis) || Math.abs(millis) > 8.64e15) {
+    invalid('时间戳超出范围')
+  }
+  return millis
+}
+
+export function formatReadableTimestamp(value: number): string {
+  const date = new Date(timestampMs(value))
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+function timestampDisplay(source: string, value: number): string | undefined {
+  if (!/^\s*(?:datetime|timestamp)\s*\([^)]*\)\s*$/i.test(source)) return undefined
+  try {
+    return formatReadableTimestamp(value)
+  } catch {
+    return undefined
+  }
+}
+
 export function formatCalcNumber(value: number): string {
   if (!Number.isFinite(value)) return String(value)
   const rounded = Number(value.toPrecision(10))
@@ -342,7 +383,7 @@ export function evaluateCalcLines(text: string): CalcLineResult[] {
         try {
           const { value } = evaluateExpression(expression.trim(), variables)
           variables.set(name, value)
-          results.push({ line, to, value, assignment: name })
+          results.push({ line, to, value, assignment: name, display: timestampDisplay(expression.trim(), value) })
         } catch (error) {
           results.push({
             line,
@@ -358,7 +399,7 @@ export function evaluateCalcLines(text: string): CalcLineResult[] {
       } else if (looksLikeExpression(trimmed)) {
         try {
           const { value, substituted } = evaluateExpression(trimmed, variables)
-          results.push({ line, to, value, substituted })
+          results.push({ line, to, value, substituted, display: timestampDisplay(trimmed, value) })
         } catch (error) {
           results.push({ line, to, error: error instanceof CalcError ? error.message : '表达式错误' })
         }

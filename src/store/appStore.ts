@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_JSON_INDENT } from '../core/jsonIndent'
 import { TOOL_LABEL } from '../core/tools'
+import { clampUiScale } from '../core/uiScale'
 import type {
   AnalysisSummary,
   AppSettings,
@@ -26,10 +27,17 @@ import type {
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
+function normalizeTheme(value: unknown): import('../core/types').ThemeMode {
+  if (value === 'solarized-dark' || value === 'solarized-light') return value
+  if (value === 'light') return 'solarized-light'
+  return 'ghostty'
+}
+
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'dark',
+  theme: 'ghostty',
   language: 'zh-CN',
   editorFontSize: 13,
+  uiScale: 1,
   formatIndent: DEFAULT_JSON_INDENT,
   wordWrap: true,
 }
@@ -493,7 +501,13 @@ export const useAppStore = create<AppState>()(
         if (version < 2) {
           return {
             ...saved,
-            settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}), wordWrap: true },
+            settings: {
+              ...DEFAULT_SETTINGS,
+              ...(saved.settings ?? {}),
+              theme: normalizeTheme(saved.settings?.theme),
+              wordWrap: true,
+              uiScale: clampUiScale(saved.settings?.uiScale ?? DEFAULT_SETTINGS.uiScale),
+            },
           } as PersistedState
         }
         return saved as PersistedState
@@ -543,7 +557,12 @@ export const useAppStore = create<AppState>()(
           docs,
           tabs,
           activeTabId,
-          settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}), theme: 'dark' },
+          settings: {
+            ...DEFAULT_SETTINGS,
+            ...(saved.settings ?? {}),
+            theme: normalizeTheme(saved.settings?.theme),
+            uiScale: clampUiScale(saved.settings?.uiScale ?? DEFAULT_SETTINGS.uiScale),
+          },
           paletteOpen: false,
           settingsOpen: false,
           summary: null,

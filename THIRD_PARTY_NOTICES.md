@@ -85,3 +85,11 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 https://github.com/squirrelchat/smol-toml
+
+## Solarized
+
+The Solarized Light and Solarized Dark themes use the Solarized color palette
+created by Ethan Schoonover.
+
+Solarized is distributed under the MIT License.
+https://github.com/altercation/solarized
