@@ -9122,3 +9122,45 @@ textarea {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+
+/* Quick command list: no focused input, so IMEs stay inactive. */
+.palette:focus {
+  outline: none;
+}
+
+.palette-quick-trigger {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  padding: 0;
+  cursor: text;
+}
+
+.palette-quick-trigger small {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.quick-key {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-subtle);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}

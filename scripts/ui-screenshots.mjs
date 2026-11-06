@@ -162,6 +162,9 @@ async function shot(page, name) {
 
 async function openCommand(page, name) {
   await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(60)
+  await page.keyboard.press('/')
+  await page.waitForTimeout(60)
   await page.locator('.palette-search input').fill(name)
   await page.waitForTimeout(150)
   await page.locator('.palette-item').first().click()

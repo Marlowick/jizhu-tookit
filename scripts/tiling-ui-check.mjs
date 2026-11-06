@@ -23,6 +23,9 @@ async function editorText() {
 
 async function openCommand(name) {
   await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(60)
+  await page.keyboard.press('/')
+  await page.waitForTimeout(60)
   await page.locator('.palette-search input').fill(name)
   await page.waitForTimeout(120)
   await page.locator('.palette-item').first().click()
@@ -82,6 +85,25 @@ try {
   await page.keyboard.press('Meta+0')
   await page.waitForTimeout(150)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.uiScale), '1')
+
+  step('quick command list: first letter runs without focusing an input')
+  await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(100)
+  assert.equal(await page.locator('.palette-quick').count(), 1)
+  assert.equal(await page.locator('.palette-search input').count(), 0)
+  assert.ok((await page.locator('.quick-key').count()) >= 10)
+  await page.keyboard.press('s')
+  await page.waitForTimeout(400)
+  assert.equal(await page.locator('.settings-dialog').count(), 1)
+  await page.getByRole('button', { name: '关闭', exact: true }).click()
+  await page.waitForTimeout(200)
+  await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(100)
+  await page.keyboard.press('v')
+  await page.waitForTimeout(300)
+  assert.equal(await page.locator('.mode-picker').count(), 1)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(150)
 
   step('blank/new-file paste auto-selects JSON or plain')
   const pasteText = async (text) => {
@@ -291,6 +313,9 @@ try {
 
   step('command palette english aliases')
   await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(60)
+  await page.keyboard.press('/')
+  await page.waitForTimeout(60)
   await page.locator('.palette-search input').fill('settings')
   await page.waitForTimeout(160)
   assert.match(await page.locator('.palette-item').first().innerText(), /设置/)

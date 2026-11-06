@@ -8,16 +8,18 @@ interface CommandPaletteProps {
   onClose: () => void
 }
 
+type PaletteMode = 'quick' | 'search'
+
 export function CommandPalette({ items, onClose }: CommandPaletteProps) {
   const { t } = useI18n()
+  const [mode, setMode] = useState<PaletteMode>('quick')
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+  const quickItems = useMemo(() => items.filter((item) => Boolean(item.quickKey)), [items])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -48,31 +50,44 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
       .map((entry) => entry.item)
   }, [items, query])
 
-  const indexOf = useMemo(() => new Map(filtered.map((item, index) => [item.id, index])), [filtered])
+  const displayed = mode === 'quick' ? quickItems : filtered
+  const indexOf = useMemo(() => new Map(displayed.map((item, index) => [item.id, index])), [displayed])
 
   const groups = useMemo(() => {
     const result = new Map<string, CommandItem[]>()
-    for (const item of filtered) {
+    for (const item of displayed) {
       const list = result.get(item.group) ?? []
       list.push(item)
       result.set(item.group, list)
     }
     return [...result.entries()]
-  }, [filtered])
+  }, [displayed])
+
+  useEffect(() => {
+    // Quick mode deliberately does NOT focus an input: this avoids activating
+    // the Chinese IME until the user explicitly asks for search.
+    if (mode === 'quick') panelRef.current?.focus()
+    else inputRef.current?.focus()
+  }, [mode])
 
   useEffect(() => {
     setActive(0)
-  }, [query])
+  }, [displayed.length, mode, query])
 
   useEffect(() => {
     const item = listRef.current?.querySelector<HTMLElement>('.palette-item.active')
     item?.scrollIntoView({ block: 'nearest' })
-  }, [active, filtered])
+  }, [active, displayed])
 
   const execute = (item: CommandItem | undefined) => {
     if (!item) return
     item.run()
     onClose()
+  }
+
+  const startSearch = () => {
+    setMode('search')
+    setQuery('')
   }
 
   const onKeyDown = (event: ReactKeyboardEvent) => {
@@ -81,6 +96,42 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
       onClose()
       return
     }
+
+    // Modifier chords stay with the global shortcut handler; never treat them
+    // as quick-command letters (e.g. ⌘W while the palette is open).
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+
+    if (mode === 'quick') {
+      if (event.key === '/') {
+        event.preventDefault()
+        startSearch()
+        return
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setActive((value) => (quickItems.length ? (value + 1) % quickItems.length : 0))
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setActive((value) => (quickItems.length ? (value - 1 + quickItems.length) % quickItems.length : 0))
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        execute(quickItems[active])
+        return
+      }
+      if (event.key.length === 1) {
+        const match = quickItems.find((item) => item.quickKey?.toLowerCase() === event.key.toLowerCase())
+        if (match) {
+          event.preventDefault()
+          execute(match)
+        }
+      }
+      return
+    }
+
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       setActive((value) => (filtered.length ? (value + 1) % filtered.length : 0))
@@ -104,17 +155,32 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label={t('palette.title')} onKeyDown={onKeyDown}>
+      <div
+        ref={panelRef}
+        className={`palette ${mode === 'quick' ? 'palette-quick' : 'palette-mode-search'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('palette.title')}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+      >
         <div className="palette-search">
           <Search size={17} strokeWidth={1.7} />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('palette.search')}
-            aria-label={t('palette.searchAria')}
-          />
-          <span className="palette-scope">{t('palette.scope')}</span>
+          {mode === 'quick' ? (
+            <button className="palette-quick-trigger" onClick={startSearch}>
+              {t('palette.quickHint')}
+              <small>{t('palette.quickSearch')}</small>
+            </button>
+          ) : (
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('palette.search')}
+              aria-label={t('palette.searchAria')}
+            />
+          )}
+          <span className="palette-scope">{mode === 'quick' ? 'A–Z' : t('palette.scope')}</span>
         </div>
 
         <div className="palette-list" role="listbox" ref={listRef}>
@@ -136,6 +202,9 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                       onMouseMove={() => setActive(index)}
                       onClick={() => execute(item)}
                     >
+                      {mode === 'quick' && item.quickKey ? (
+                        <kbd className="quick-key">{item.quickKey.toUpperCase()}</kbd>
+                      ) : null}
                       <span className="item-icon">
                         {Icon ? <Icon size={15} strokeWidth={1.6} /> : null}
                       </span>
@@ -158,9 +227,19 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
         </div>
 
         <div className="palette-footer">
-          <span>{t('palette.select')}</span>
-          <span>{t('palette.execute')}</span>
-          <span>{t('palette.close')}</span>
+          {mode === 'quick' ? (
+            <>
+              <span>{t('palette.quickExecute')}</span>
+              <span>{t('palette.quickSearch')}</span>
+              <span>{t('palette.close')}</span>
+            </>
+          ) : (
+            <>
+              <span>{t('palette.select')}</span>
+              <span>{t('palette.execute')}</span>
+              <span>{t('palette.close')}</span>
+            </>
+          )}
           <span className="keys">{t('palette.footer')}</span>
         </div>
       </div>

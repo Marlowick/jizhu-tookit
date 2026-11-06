@@ -161,6 +161,9 @@ await page.addInitScript(() => {
 const log = (message) => console.log(`• ${message}`)
 async function openCommand(name) {
   await page.keyboard.press('Meta+Shift+P')
+  await page.waitForTimeout(60)
+  await page.keyboard.press('/')
+  await page.waitForTimeout(60)
   await page.locator('.palette-search input').fill(name)
   await page.waitForTimeout(120)
   await page.locator('.palette-item').first().click()

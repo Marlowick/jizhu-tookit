@@ -48,6 +48,19 @@ import {
   useAppStore,
 } from './store/appStore'
 
+const QUICK_PANEL_KEYS: Record<WorkspacePanelType, string> = {
+  jq: 'j',
+  diff: 'd',
+  qr: 'q',
+  pipeline: 'p',
+  url: 'l',
+  time: 't',
+  regex: 'r',
+  codec: 'e',
+  data: 'x',
+  curl: 'k',
+}
+
 const PANELS: Array<{
   type: WorkspacePanelType
   title: string
@@ -305,6 +318,7 @@ export default function App() {
         description: panel.description,
         group: '面板 · 弹窗',
         hint: ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl'].includes(panel.type) ? '分屏 · 单例' : '平铺',
+        quickKey: QUICK_PANEL_KEYS[panel.type],
         icon: panel.icon,
         run: () => openWorkspacePanel(activeTab.id, panel.type),
       })
@@ -318,6 +332,7 @@ export default function App() {
         description: '撤销当前编辑器的上一步操作',
         group: '编辑',
         hint: '⌘Z',
+        quickKey: 'u',
         icon: Undo2,
         run: requestEditorUndo,
       },
@@ -329,6 +344,7 @@ export default function App() {
         description: '作用于 plain / JSON / Calc 编辑器；默认开启',
         group: '编辑',
         hint: settings.wordWrap ? 'Wrap 开' : 'Wrap 关',
+        quickKey: 'w',
         icon: WrapText,
         run: () => {
           updateSettings({ wordWrap: !settings.wordWrap })
@@ -342,6 +358,7 @@ export default function App() {
         keywords: ['plain', 'json', 'calc', 'editor', 'language'],
         description: '选择 Plain / JSON / Calc 编辑器模式',
         group: '编辑',
+        quickKey: 'v',
         icon: AlignJustify,
         run: () => setModePickerOpen(true),
       },
@@ -352,6 +369,7 @@ export default function App() {
         keywords: ['settings', 'preferences', 'options', 'shortcuts'],
         description: '编辑器字号、自动换行、快捷键与关于',
         group: '全局',
+        quickKey: 's',
         icon: Settings,
         run: () => setSettingsOpen(true),
       },
@@ -363,6 +381,7 @@ export default function App() {
         description: '创建一个新的空白编辑工作区',
         group: '全局',
         hint: '+',
+        quickKey: 'n',
         icon: Plus,
         run: newWorkspace,
       },
@@ -411,6 +430,7 @@ export default function App() {
           description: '按设置中的缩进格式化当前文档',
           group: '编辑',
           hint: 'JSON',
+          quickKey: 'f',
           icon: AlignJustify,
           run: () => void handleFormat(),
         },
@@ -422,6 +442,7 @@ export default function App() {
           description: '压缩为单行 JSON',
           group: '编辑',
           hint: 'JSON',
+          quickKey: 'm',
           icon: Minimize2,
           run: () => void handleMinify(),
         },
@@ -433,6 +454,7 @@ export default function App() {
           description: '把编辑器内容复制到剪贴板',
           group: '编辑',
           hint: '剪贴板',
+          quickKey: 'c',
           icon: Copy,
           run: () => void handleCopy(),
         },

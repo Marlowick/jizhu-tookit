@@ -21,6 +21,7 @@
 - Added a neutral Light theme as a selectable theme.
 - Blank-editor paste now auto-detects JSON without requiring a prior clear.
 - JSON editor performance: debounced local persistence, deferred analysis/tree updates, and cheaper external-text synchronization.
+- Command palette now opens as a Helix-style single-key quick list with no focused input (IME-safe); press `/` for the searchable palette.
 - Production bundle is code-split: tools/panels load lazily, with separate React, CodeMirror, data-format, QR and icon chunks; the >500 kB warning is gone.
 - Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line/tree accents, and thinner scrollbars.
 - Fixed low-contrast text selection in light themes by forcing the CodeMirror selection layer to the active `--cm-selection` token.

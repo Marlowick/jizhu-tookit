@@ -38,9 +38,10 @@ This repository is **source-only**:
   - UTF-8 and LF displayed in the status bar; word wrap is on by default and toggleable from the command palette.
   - No file open/save in this milestone — content is typed/pasted and restored locally.
   - Pasting into a blank editor (new workspace or after clearing) detects JSON object/array and switches to JSON; any other paste switches to Plain.
-- **Command palette** (`⌘⇧P`)
-  - Open tools, choose the editor mode (Plain / JSON / Calc), undo, format/minify, copy, open settings.
-  - Every command has a searchable English alias (e.g. `settings` finds 设置).
+- **Quick commands / command palette** (`⌘⇧P`)
+  - Opens as a single-key command list without focusing an input, so Chinese IMEs do not slow it down.
+  - Press `S` settings, `V` mode, `F` format JSON, `M` minify, `J` jq, `D` Diff, `R` Regex, and so on; the key is shown beside each command.
+  - Press `/` to switch to the searchable list; every command has an English alias (e.g. `settings` finds 设置).
 - **Input sources**
   - Only Diff keeps a source selector: selected text, current workspace tab, or manual input.
   - QR / URL / Encode-decode / Time / jq / Regex / Pipeline / Data format / cURL read the left editor directly and have no separate input field.
@@ -68,7 +69,7 @@ This repository is **source-only**:
 
 | Shortcut | Action |
 | --- | --- |
-| `⌘⇧P` | Command palette |
+| `⌘⇧P` | Quick command list; `/` searches |
 | `⌘F` | Find / replace in editor |
 | `⌘Z` / `⌘⇧Z` / `Ctrl+Z` | Undo / redo |
 | `Tab` / `Shift+Tab` | Indent / outdent |
