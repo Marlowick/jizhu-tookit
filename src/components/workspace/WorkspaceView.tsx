@@ -1,19 +1,20 @@
-import { useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useAppStore } from '../../store/appStore'
 import type { Doc, SideToolType, Tab } from '../../core/types'
-import { JsonTool } from '../JsonTool'
-import { PipelineTool } from '../PipelineTool'
-import { CurlSidePane } from './CurlSidePane'
-import { DataConvertPane } from './DataConvertPane'
-import { JqTool } from '../JqTool'
-import { RegexTool } from '../RegexTool'
-import { UrlTool } from '../UrlTool'
-import { CodecSidePane } from './CodecSidePane'
 import { PlainEditor } from './PlainEditor'
-import { QrPreviewPane } from './QrPreviewPane'
-import { TimeSidePane } from './TimeSidePane'
-import { WorkspacePanels } from './WorkspacePanels'
+
+const JsonTool = lazy(() => import('../JsonTool').then((module) => ({ default: module.JsonTool })))
+const PipelineTool = lazy(() => import('../PipelineTool').then((module) => ({ default: module.PipelineTool })))
+const JqTool = lazy(() => import('../JqTool').then((module) => ({ default: module.JqTool })))
+const RegexTool = lazy(() => import('../RegexTool').then((module) => ({ default: module.RegexTool })))
+const UrlTool = lazy(() => import('../UrlTool').then((module) => ({ default: module.UrlTool })))
+const CurlSidePane = lazy(() => import('./CurlSidePane').then((module) => ({ default: module.CurlSidePane })))
+const DataConvertPane = lazy(() => import('./DataConvertPane').then((module) => ({ default: module.DataConvertPane })))
+const CodecSidePane = lazy(() => import('./CodecSidePane').then((module) => ({ default: module.CodecSidePane })))
+const QrPreviewPane = lazy(() => import('./QrPreviewPane').then((module) => ({ default: module.QrPreviewPane })))
+const TimeSidePane = lazy(() => import('./TimeSidePane').then((module) => ({ default: module.TimeSidePane })))
+const WorkspacePanels = lazy(() => import('./WorkspacePanels').then((module) => ({ default: module.WorkspacePanels })))
 
 interface WorkspaceViewProps {
   tab: Tab
@@ -43,7 +44,9 @@ function EditorPane({ tab, doc }: WorkspaceViewProps) {
   if (mode === 'json') {
     return (
       <div className="workspace-editor">
-        <JsonTool tab={tab} doc={doc} highlights={editorHighlights} />
+        <Suspense fallback={<div className="pane-loading">加载 JSON 编辑器…</div>}>
+          <JsonTool tab={tab} doc={doc} highlights={editorHighlights} />
+        </Suspense>
       </div>
     )
   }
@@ -147,6 +150,7 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
           title="拖动调整宽度，双击复位"
         />
         <div className="workspace-qr-preview">
+          <Suspense fallback={<div className="pane-loading">加载工具…</div>}>
           {sideTool === 'qr' ? (
             <QrPreviewPane tab={tab} doc={doc} onClose={close} />
           ) : (
@@ -179,13 +183,18 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
               )}
             </SideToolShell>
           )}
+          </Suspense>
         </div>
       </div>
     )
   }
 
   if (workspace.panels.length) {
-    return <WorkspacePanels tab={tab} doc={doc} />
+    return (
+      <Suspense fallback={<div className="pane-loading">加载面板…</div>}>
+        <WorkspacePanels tab={tab} doc={doc} />
+      </Suspense>
+    )
   }
 
   return <EditorPane tab={tab} doc={doc} />

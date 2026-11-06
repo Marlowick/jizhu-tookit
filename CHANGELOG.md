@@ -17,6 +17,13 @@
 - Shortcuts: added ⌘1–⌘9 tab switching; ⌘W asks before closing the current tool/panel or a tab with content, and the confirmation names the target. Removed ⌘, ⌘⇧F, Ctrl+Alt+←/→, Alt+1–4 and the global Esc tool-close shortcut.
 - Command palette commands now expose English aliases; mode changes use a Plain/JSON/Calc picker.
 - Interface zoom: ⌘= / ⌘- in 10% steps, ⌘0 resets to 100%, persisted in settings.
+- Tabs now share the 40px top window strip; the separate title row was removed.
+- Added a neutral Light theme as a selectable theme.
+- Blank-editor paste now auto-detects JSON without requiring a prior clear.
+- JSON editor performance: debounced local persistence, deferred analysis/tree updates, and cheaper external-text synchronization.
+- Production bundle is code-split: tools/panels load lazily, with separate React, CodeMirror, data-format, QR and icon chunks; the >500 kB warning is gone.
+- Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line/tree accents, and thinner scrollbars.
+- Fixed low-contrast text selection in light themes by forcing the CodeMirror selection layer to the active `--cm-selection` token.
 - Added Ghostty Dark, Solarized Light and Solarized Dark themes.
 - JSON editor now has a fold gutter, fold placeholders and CodeMirror fold keybindings.
 - Clearing a document and pasting JSON auto-switches to JSON; pasting non-JSON switches to Plain.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import {
   AlignJustify,
@@ -107,12 +107,9 @@ export default function App() {
   const workspace = activeTab?.workspace
   const [modePickerOpen, setModePickerOpen] = useState(false)
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
-  const clearedTabs = useRef(new Set<string>())
-  const previousDocId = useRef('')
-  const previousText = useRef('')
 
   useEffect(() => {
-    const light = settings.theme === 'solarized-light'
+    const light = settings.theme === 'solarized-light' || settings.theme === 'light'
     document.documentElement.dataset.theme = light ? 'light' : 'dark'
     document.documentElement.dataset.themeVariant = settings.theme
     document.documentElement.style.colorScheme = light ? 'light' : 'dark'
@@ -121,24 +118,10 @@ export default function App() {
   }, [settings.editorFontSize, settings.language, settings.theme])
 
   useEffect(() => {
-    if (!activeDoc || !activeTab) return
-    if (previousDocId.current !== activeDoc.id) {
-      previousDocId.current = activeDoc.id
-      previousText.current = activeDoc.text
-      return
-    }
-    if (activeDoc.text.length === 0 && previousText.current.trim().length > 0) {
-      clearedTabs.current.add(activeTab.id)
-    }
-    if (activeDoc.text.length > 0) clearedTabs.current.delete(activeTab.id)
-    previousText.current = activeDoc.text
-  }, [activeDoc, activeTab])
-
-  useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
       const tab = selectActiveTab(useAppStore.getState())
       const doc = selectActiveDoc(useAppStore.getState())
-      if (!tab || !doc || doc.text.length > 0 || !clearedTabs.current.has(tab.id)) return
+      if (!tab || !doc || doc.text.length > 0) return
       const target = event.target as HTMLElement | null
       const active = document.activeElement as HTMLElement | null
       if (!target?.closest('.cm-editor') && !active?.closest('.cm-editor')) return
@@ -148,7 +131,6 @@ export default function App() {
       const looksJson = isJsonDocument(pasted)
       setText(doc.id, pasted)
       setWorkspaceMode(tab.id, looksJson ? 'json' : 'plain')
-      clearedTabs.current.delete(tab.id)
       showToast(looksJson ? '已识别为 JSON，切换到 JSON 模式' : '已切换到纯文本模式')
     }
     window.addEventListener('paste', onPaste, true)
@@ -481,8 +463,9 @@ export default function App() {
 
   return (
     <div className="app tiling-app">
-      <TitleBar showMockTraffic={!isTauri} />
-      <TabBar onNewTab={newWorkspace} />
+      <TitleBar showMockTraffic={!isTauri}>
+        <TabBar onNewTab={newWorkspace} />
+      </TitleBar>
       <main className="workspace tiling-workspace">
         <WorkspaceView tab={activeTab} doc={activeDoc} />
       </main>

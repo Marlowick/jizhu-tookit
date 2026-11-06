@@ -83,37 +83,42 @@ try {
   await page.waitForTimeout(150)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.uiScale), '1')
 
-  step('paste after clearing auto-selects JSON or plain')
-  await page.locator('.cm-content').click()
-  await page.keyboard.insertText('{"seed":1}')
-  await page.waitForTimeout(120)
-  await page.keyboard.press('Meta+a')
-  await page.keyboard.press('Backspace')
-  await page.waitForTimeout(200)
-  await page.evaluate(() => {
-    const data = new DataTransfer()
-    data.setData('text/plain', '{"auto":true,"n":2}')
-    document.querySelector('.cm-content')?.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
-    )
-  })
+  step('blank/new-file paste auto-selects JSON or plain')
+  const pasteText = async (text) => {
+    await page.evaluate((value) => {
+      const data = new DataTransfer()
+      data.setData('text/plain', value)
+      document.querySelector('.cm-content')?.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+      )
+    }, text)
+  }
+  // New blank tab: paste JSON without deleting anything first.
+  await pasteText('{\n  "auto": true,\n  "source": "new file"\n}')
   await page.waitForTimeout(500)
   assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
-  assert.match(await page.locator('.cm-content').innerText(), /"auto"/)
+  assert.match(await page.locator('.cm-content').innerText(), /"source"/)
+  // Clear JSON, then paste plain text.
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
   await page.keyboard.press('Backspace')
-  await page.waitForTimeout(200)
-  await page.evaluate(() => {
-    const data = new DataTransfer()
-    data.setData('text/plain', 'plain text after clear')
-    document.querySelector('.cm-content')?.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
-    )
-  })
+  await page.waitForTimeout(150)
+  await pasteText('plain text after clear')
   await page.waitForTimeout(500)
   assert.equal(await page.locator('.status-mode').innerText(), 'PLAIN')
   assert.match(await page.locator('.cm-content').innerText(), /plain text after clear/)
+  // Clear plain, then paste JSON again.
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.press('Backspace')
+  await page.waitForTimeout(150)
+  await pasteText('{"after":"clear","n":2}')
+  await page.waitForTimeout(500)
+  assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
+  // Reset to an empty plain workspace for the remaining checks.
+  await page.locator('.status-mode').click()
+  await page.getByRole('option', { name: /PLAIN/ }).click()
+  await page.waitForTimeout(200)
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
   await page.keyboard.press('Backspace')
@@ -214,6 +219,10 @@ try {
   assert.equal(await page.locator('.settings-dialog').count(), 1)
   const themeRow = page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).first()
   assert.equal(await themeRow.locator('select').inputValue(), 'ghostty')
+  await themeRow.locator('select').selectOption('light')
+  await page.waitForTimeout(250)
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'light')
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(255, 255, 255)')
   await themeRow.locator('select').selectOption('solarized-light')
   await page.waitForTimeout(300)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'solarized-light')

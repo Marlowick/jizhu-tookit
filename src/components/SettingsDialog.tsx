@@ -101,6 +101,7 @@ export function SettingsDialog() {
                     onChange={(event) => updateSettings({ theme: event.target.value as typeof settings.theme })}
                   >
                     <option value="ghostty">{t('settings.theme.ghostty')}</option>
+                    <option value="light">{t('settings.theme.light')}</option>
                     <option value="solarized-dark">{t('settings.theme.solarizedDark')}</option>
                     <option value="solarized-light">{t('settings.theme.solarizedLight')}</option>
                   </select>

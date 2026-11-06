@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react'
+
 interface TitleBarProps {
   showMockTraffic: boolean
+  children?: ReactNode
 }
 
-export function TitleBar({ showMockTraffic }: TitleBarProps) {
+export function TitleBar({ showMockTraffic, children }: TitleBarProps) {
   return (
     <header className="titlebar" data-tauri-drag-region>
       {showMockTraffic && (
@@ -12,9 +15,9 @@ export function TitleBar({ showMockTraffic }: TitleBarProps) {
           <span className="dot dot-green" />
         </div>
       )}
-      <span className="titlebar-title" data-tauri-drag-region>
-        机杼工具箱
-      </span>
+      <div className="titlebar-tabs" data-tauri-drag-region>
+        {children}
+      </div>
     </header>
   )
 }

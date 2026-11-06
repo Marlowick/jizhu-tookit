@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, type PersistStorage } from 'zustand/middleware'
 import { DEFAULT_JSON_INDENT } from '../core/jsonIndent'
 import { TOOL_LABEL } from '../core/tools'
 import { clampUiScale } from '../core/uiScale'
@@ -29,7 +29,7 @@ const uid = () => Math.random().toString(36).slice(2, 10)
 
 function normalizeTheme(value: unknown): import('../core/types').ThemeMode {
   if (value === 'solarized-dark' || value === 'solarized-light') return value
-  if (value === 'light') return 'solarized-light'
+  if (value === 'light' || value === 'deepseek-light') return 'light'
   return 'ghostty'
 }
 
@@ -124,6 +124,56 @@ interface AppState {
   setSettingsOpen: (open: boolean) => void
   showToast: (message: string) => void
 }
+
+const PERSIST_DELAY_MS = 220
+
+const debouncedStorage: PersistStorage<PersistedState> = (() => {
+  let timer: number | null = null
+  let pending: { name: string; value: { state: PersistedState; version?: number } } | null = null
+
+  const flush = () => {
+    if (timer != null) {
+      window.clearTimeout(timer)
+      timer = null
+    }
+    if (!pending) return
+    try {
+      window.localStorage.setItem(pending.name, JSON.stringify(pending.value))
+    } catch {
+      // Storage can be unavailable in private/restricted contexts.
+    }
+    pending = null
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', flush)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush()
+    })
+  }
+
+  return {
+    getItem: (name) => {
+      try {
+        const raw = window.localStorage.getItem(name)
+        return raw ? (JSON.parse(raw) as { state: PersistedState; version?: number }) : null
+      } catch {
+        return null
+      }
+    },
+    setItem: (name, value) => {
+      pending = { name, value }
+      if (timer != null) window.clearTimeout(timer)
+      timer = window.setTimeout(flush, PERSIST_DELAY_MS)
+    },
+    removeItem: (name) => {
+      pending = null
+      if (timer != null) window.clearTimeout(timer)
+      window.localStorage.removeItem(name)
+    },
+  }
+})()
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -496,6 +546,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'jizhu.workspace.v2',
       version: 2,
+      storage: debouncedStorage,
       migrate: (persisted, version) => {
         const saved = (persisted ?? {}) as Partial<PersistedState>
         if (version < 2) {

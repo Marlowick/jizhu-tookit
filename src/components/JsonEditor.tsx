@@ -165,6 +165,7 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
   const onChangeRef = useRef(onChange)
   const onCursorRef = useRef(onCursor)
   const onSelectionRef = useRef(onSelection)
+  const currentTextRef = useRef(text)
 
   onChangeRef.current = onChange
   onCursorRef.current = onCursor
@@ -196,7 +197,11 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
       placeholder(`${t('editor.placeholder.json')}\n${t('editor.hint', { mod: modKey('⇧P') })}`),
       EditorView.contentAttributes.of({ 'aria-label': 'JSON 文本编辑器' }),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged) onChangeRef.current(update.state.doc.toString())
+        if (update.docChanged) {
+          const nextText = update.state.doc.toString()
+          currentTextRef.current = nextText
+          onChangeRef.current(nextText)
+        }
         if (update.selectionSet || update.docChanged) {
           const head = update.state.selection.main.head
           const line = update.state.doc.lineAt(head)
@@ -229,8 +234,9 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    if (currentTextRef.current === text) return
     const current = view.state.doc.toString()
-    if (current === text) return
+    currentTextRef.current = text
     view.dispatch({ changes: { from: 0, to: current.length, insert: text } })
   }, [text])
 

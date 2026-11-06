@@ -23,7 +23,7 @@ export function analysisPlan(mode: DocMode): AnalysisPlan {
     case 'large':
       return { mode, debounceMs: 500, maxNodes: 25_000 }
     default:
-      return { mode, debounceMs: 120, maxNodes: undefined }
+      return { mode, debounceMs: 180, maxNodes: undefined }
   }
 }
 

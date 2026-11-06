@@ -16,5 +16,18 @@ export default defineConfig({
   build: {
     target: 'safari15',
     sourcemap: false,
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('@codemirror') || id.includes('@lezer')) return 'codemirror'
+          if (id.includes('/yaml/') || id.includes('smol-toml')) return 'data-formats'
+          if (id.includes('qrcode')) return 'qrcode'
+          if (id.includes('lucide-react')) return 'icons'
+          if (id.includes('react') || id.includes('scheduler') || id.includes('zustand')) return 'react-vendor'
+          return 'vendor'
+        },
+      },
+    },
   },
 })

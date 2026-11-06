@@ -209,6 +209,7 @@ try {
   log('JSON mode, indent 2, tree, search, undo, error recovery')
   await openCommand('模式')
   await page.getByRole('option', { name: /JSON/ }).click()
+  await page.waitForTimeout(500)
   assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
   assert.equal(await page.locator('.json-tool .tree-pane').count(), 1)
   await setText('{"a":1,"b":[1,2]}')

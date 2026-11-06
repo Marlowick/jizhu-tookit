@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, PanelLeftClose, PanelLeftOpen, Pencil } from 'lucide-react'
 import { JsonEditor } from '../components/JsonEditor'
 import { JsonTree } from '../components/JsonTree'
@@ -65,13 +65,15 @@ export function JsonTool({ tab, doc, highlights }: JsonToolProps) {
     const timer = window.setTimeout(async () => {
       const result = await analyzeJson(doc.text, maxNodes)
       if (cancelled) return
-      setAnalysis(result)
-      if (result.valid) setLastValid(result)
-      setSummary({
-        valid: result.valid,
-        issue: result.issue,
-        nodes: result.nodes.length,
-        bytes: result.stats.bytes,
+      startTransition(() => {
+        setAnalysis(result)
+        if (result.valid) setLastValid(result)
+        setSummary({
+          valid: result.valid,
+          issue: result.issue,
+          nodes: result.nodes.length,
+          bytes: result.stats.bytes,
+        })
       })
     }, debounceMs)
     return () => {
@@ -84,13 +86,15 @@ export function JsonTool({ tab, doc, highlights }: JsonToolProps) {
     setAnalyzing(true)
     try {
       const result = await analyzeJson(doc.text, maxNodes)
-      setAnalysis(result)
-      if (result.valid) setLastValid(result)
-      setSummary({
-        valid: result.valid,
-        issue: result.issue,
-        nodes: result.nodes.length,
-        bytes: result.stats.bytes,
+      startTransition(() => {
+        setAnalysis(result)
+        if (result.valid) setLastValid(result)
+        setSummary({
+          valid: result.valid,
+          issue: result.issue,
+          nodes: result.nodes.length,
+          bytes: result.stats.bytes,
+        })
       })
     } catch (error) {
       showToast(errorMessage(error))
@@ -99,11 +103,11 @@ export function JsonTool({ tab, doc, highlights }: JsonToolProps) {
     }
   }
 
-  const hasText = Boolean(doc.text.trim())
+  const hasText = useMemo(() => doc.text.trim().length > 0, [doc.text])
   const invalid = Boolean(analysis && !analysis.valid && hasText)
   const tree = lastValid ?? (analysis?.valid ? analysis : null)
   const errorLine = invalid ? (analysis?.issue?.line ?? null) : null
-  const lineCount = doc.text ? doc.text.split('\n').length : 0
+  const lineCount = useMemo(() => (doc.text ? doc.text.split('\n').length : 0), [doc.text])
 
   // 编辑器光标 → 树：高亮最深包含节点，并展开祖先
   useEffect(() => {

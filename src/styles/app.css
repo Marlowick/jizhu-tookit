@@ -8628,3 +8628,497 @@ body,
   color: var(--text);
   border-color: var(--border);
 }
+
+/* Solarized Light: keep controls on the Solarized surface instead of pure white. */
+[data-theme="light"] select,
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="light"] textarea,
+[data-theme="light"] .diff-modes,
+[data-theme="light"] .diff-indent,
+[data-theme="light"] .time-modes,
+[data-theme="light"] .codec-modes,
+[data-theme="light"] .regex-view-toggle,
+[data-theme="light"] .regex-flag,
+[data-theme="light"] .qr-section-head,
+[data-theme="light"] .qr-controls,
+[data-theme="light"] .url-param-input,
+[data-theme="light"] .pipeline-add {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="light"] .diff-modes button.active,
+[data-theme="light"] .time-modes button.active,
+[data-theme="light"] .codec-modes button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+[data-theme="light"] .diff-modes button:hover,
+[data-theme="light"] .time-modes button:hover,
+[data-theme="light"] .codec-modes button:hover {
+  color: var(--text);
+}
+
+[data-theme="light"] .url-param-list {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
+/* Solarized Light: card and tool surfaces share the Solarized light palette. */
+[data-theme="light"] .tool-card,
+[data-theme="light"] .settings-dialog,
+[data-theme="light"] .palette,
+[data-theme="light"] .context-menu,
+[data-theme="light"] .toast,
+[data-theme="light"] .diff-modal,
+[data-theme="light"] .time-card,
+[data-theme="light"] .qr-preview-card,
+[data-theme="light"] .pipeline-step-card,
+[data-theme="light"] .url-param-list,
+[data-theme="light"] .url-param-row,
+[data-theme="light"] .url-json-preview,
+[data-theme="light"] .url-structure,
+[data-theme="light"] .diff-line-head,
+[data-theme="light"] .regex-view-toggle {
+  background-color: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="light"] .pipeline-config-panel,
+[data-theme="light"] .pipeline-config-head,
+[data-theme="light"] .pipeline-config-foot,
+[data-theme="light"] .settings-side,
+[data-theme="light"] .settings-foot {
+  background-color: var(--bg-app);
+  border-color: var(--border);
+}
+
+/* -------------------------------------------------------------------------
+ * Neutral light theme
+ * A clean neutral-bluish light palette for daytime editing.
+ * ---------------------------------------------------------------------- */
+[data-theme-variant="light"] {
+  --bg-app: #f5f6f7;
+  --bg-subtle: #f1f3f5;
+  --bg-panel: #f9fafb;
+  --bg-surface: #ffffff;
+  --border: #d9dee7;
+  --border-strong: #cfd3d6;
+  --border-soft: #e9ecf2;
+  --text: #0f1115;
+  --text-muted: #61666b;
+  --text-faint: #81858c;
+  --accent: #4176e6;
+  --accent-soft: #edf3fe;
+  --accent-border: #93c5fd;
+  --danger: #ec1313;
+  --danger-soft: #fef2f2;
+  --success: #22c55e;
+  --success-soft: #e6faed;
+  --warning: #f59e0b;
+  --warning-soft: #fef5e7;
+  --syntax-key: #881391;
+  --syntax-string: #c41a16;
+  --syntax-number: #1c00cf;
+  --syntax-bool: #1c00cf;
+  --syntax-punct: #202124;
+  --cm-selection: #dbeafe;
+  --cm-search: #fef5e7;
+  --cm-search-border: #f59e0b;
+  --shadow-card: 0 4px 16px rgb(15 17 21 / 6%);
+  --shadow-pop: 0 24px 64px rgb(15 17 21 / 16%), 0 2px 8px rgb(15 17 21 / 6%);
+  color-scheme: light;
+}
+
+[data-theme-variant="light"] body,
+[data-theme-variant="light"] .app {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+[data-theme-variant="light"] ::selection {
+  background: #dbeafe;
+}
+
+[data-theme-variant="light"] ::-webkit-scrollbar-thumb {
+  background: #c7cdd6;
+}
+
+[data-theme-variant="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #adb2b8;
+}
+
+[data-theme-variant="light"] .tab:hover,
+[data-theme-variant="light"] .btn:hover,
+[data-theme-variant="light"] .settings-nav button:hover,
+[data-theme-variant="light"] .statusbar-settings:hover {
+  background: #f1f3f5;
+}
+
+[data-theme-variant="light"] .btn.primary {
+  color: #ffffff;
+}
+
+[data-theme-variant="light"] .toast,
+[data-theme-variant="light"] .calc-help-panel {
+  background: #f9fafb;
+  border-color: var(--border);
+}
+
+[data-theme-variant="light"] .settings-switch span {
+  background: #c7cdd6;
+}
+
+[data-theme-variant="light"] .qr-zoom-btn {
+  background: rgb(255 255 255 / 92%);
+}
+
+[data-theme-variant="light"] .m4-error,
+[data-theme-variant="light"] .diff-error,
+[data-theme-variant="light"] .pipeline-error-card {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #ec1313;
+}
+
+[data-theme-variant="light"] .pipeline-step-card.failed {
+  background-color: #fef2f2;
+}
+
+[data-theme-variant="light"] .cm-line.cm-error-line {
+  background: rgb(236 19 19 / 8%);
+}
+
+[data-theme-variant="light"] .diff-line-row.change .diff-cell.a,
+[data-theme-variant="light"] .diff-line-row.remove .diff-cell.a,
+[data-theme-variant="light"] .url-diff-row.change .url-value.a,
+[data-theme-variant="light"] .url-diff-row.remove .url-value.a {
+  background: #fef2f2;
+}
+
+[data-theme-variant="light"] .diff-line-row.change .diff-cell.b,
+[data-theme-variant="light"] .diff-line-row.add .diff-cell.b,
+[data-theme-variant="light"] .url-diff-row.change .url-value.b,
+[data-theme-variant="light"] .url-diff-row.add .url-value.b {
+  background: #e6faed;
+}
+
+[data-theme-variant="light"] .diff-cell.a .diff-inline {
+  background: #fbd5d5;
+}
+
+[data-theme-variant="light"] .diff-cell.b .diff-inline {
+  background: #c9f0d6;
+}
+
+[data-theme-variant="light"] .url-seg.protocol {
+  background: #e6faed;
+  color: #188a45;
+}
+
+[data-theme-variant="light"] .url-seg.host {
+  background: #edf3fe;
+  color: #2f5fbe;
+}
+
+[data-theme-variant="light"] .url-seg.path {
+  background: #f3edff;
+  color: #7750c9;
+}
+
+[data-theme-variant="light"] .url-seg.query {
+  background: #fef5e7;
+  color: #b87500;
+}
+
+[data-theme-variant="light"] .url-seg.hash {
+  background: #f1f3f5;
+  color: #61666b;
+}
+
+[data-theme-variant="light"] .regex-highlight mark {
+  background: rgb(65 118 230 / 18%);
+}
+
+[data-theme-variant="light"] .settings-pill.ok {
+  background: #e6faed;
+  border-color: #b7ecc8;
+  color: #188a45 !important;
+}
+
+/* Tabs share the 40px window title area; no separate title row. */
+.titlebar {
+  justify-content: flex-start;
+  padding: 0 10px 0 78px;
+}
+
+.titlebar-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.titlebar-tabs .tiling-tabbar {
+  flex: 1 1 auto;
+  height: 40px;
+  min-width: 0;
+  padding: 5px 0 0;
+  background: transparent;
+  border: 0;
+  align-items: center;
+}
+
+.titlebar-tabs .tiling-tab {
+  height: 30px;
+}
+
+.titlebar-tabs .tiling-tab.active {
+  height: 30px;
+  background: var(--bg-surface);
+}
+
+/* -------------------------------------------------------------------------
+ * Sublime-inspired flat UI polish
+ * Dense, square, editor-first; one accent, one-pixel separators.
+ * ---------------------------------------------------------------------- */
+:root {
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+}
+
+.titlebar {
+  border-bottom-color: var(--border);
+}
+
+.titlebar-tabs .tiling-tabbar {
+  padding-top: 6px;
+}
+
+.titlebar-tabs .tiling-tab {
+  height: 32px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-faint);
+  background: transparent;
+}
+
+.titlebar-tabs .tiling-tab:first-child {
+  border-left: 1px solid var(--border);
+}
+
+.titlebar-tabs .tiling-tab.active {
+  height: 32px;
+  background: var(--bg-surface);
+  color: var(--text);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.titlebar-tabs .tiling-tab:hover {
+  background: var(--bg-subtle);
+}
+
+.titlebar-tabs .tab-new {
+  margin-left: 6px;
+  border: 0;
+  border-radius: 2px;
+}
+
+.btn {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 2px;
+  box-shadow: none;
+  font-size: 11.5px;
+}
+
+.btn.primary {
+  box-shadow: none;
+}
+
+.btn:focus-visible,
+.tab-new:focus-visible,
+.tiling-tab:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.pane-header,
+.workspace-panel-head,
+.side-tool-shell-head {
+  flex-basis: 32px;
+  height: 32px;
+  padding-left: 10px;
+  background: var(--bg-app);
+  font-size: 11.5px;
+}
+
+.pane-header .right,
+.workspace-panel-source,
+.side-tool-shell-sync {
+  font-size: 10px;
+}
+
+.side-tool-shell-head strong,
+.workspace-panel-head strong {
+  font-weight: 600;
+}
+
+.side-tool-controls,
+.url-side-toolbar,
+.diff-source-bar,
+.diff-options-bar {
+  box-shadow: none;
+}
+
+.side-tool-controls {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+select,
+input[type="text"],
+input[type="number"],
+textarea {
+  border-radius: 2px;
+}
+
+.statusbar {
+  gap: 14px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+}
+
+.statusbar .right {
+  gap: 14px;
+}
+
+.tree-row {
+  border-radius: 0;
+}
+
+.tree-row:hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.tree-row.active {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.cm-editor .cm-activeLine {
+  background: color-mix(in srgb, var(--text) 4%, transparent) !important;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text-muted);
+}
+
+.cm-editor .cm-gutters {
+  border-right: 1px solid var(--border-soft);
+}
+
+.palette-backdrop {
+  padding-top: 10vh;
+  background: rgb(0 0 0 / 28%);
+  backdrop-filter: none;
+}
+
+.palette {
+  width: min(760px, calc(100vw - 72px));
+  border-radius: 2px;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 28%);
+  animation: none;
+}
+
+.palette-search {
+  height: 46px;
+  padding: 0 14px;
+}
+
+.palette-search input {
+  font-size: 14px;
+}
+
+.palette-list {
+  padding: 4px 6px 6px;
+}
+
+.palette-group {
+  padding: 8px 8px 3px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.palette-item {
+  height: 34px;
+  gap: 9px;
+  padding: 0 8px;
+  border-radius: 2px;
+  font-size: 12.5px;
+}
+
+.settings-dialog,
+.diff-modal,
+.close-confirm,
+.mode-picker {
+  border-radius: 3px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 32%);
+}
+
+.settings-nav button,
+.settings-pill,
+.mode-picker-option,
+.diff-modes,
+.diff-modes button {
+  border-radius: 2px;
+}
+
+.settings-nav button.active,
+.mode-picker-option.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-width: 2px;
+  border-radius: 0;
+}
+
+/* drawSelection uses a layer above the native ::selection; keep it on the
+ * active theme's selection token (Dark code themes otherwise force a dark
+ * teal layer under light themes). */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: var(--cm-selection) !important;
+  color: inherit;
+}
+
+/* Keep the first tab clear of the native green/maximize traffic light. */
+.titlebar {
+  padding-left: 96px;
+}
+
+.pane-loading {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
