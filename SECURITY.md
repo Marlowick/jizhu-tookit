@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-This repository currently publishes **source code only** for `jizhu 1.0.x` on macOS. There is no signed or notarized binary release yet.
+This repository currently publishes **source code only** for `jizhu 1.1.x` on macOS. There is no signed or notarized binary release yet.
 
 ## Reporting a vulnerability
 
@@ -39,6 +39,8 @@ Out of scope:
 - No filesystem access from the webview; no fs/shell/http plugins. cURL uses a fixed system binary with argument arrays, not a shell.
 - jaq and regex run in limited worker subprocesses; jq no longer invokes a system binary.
 - Tauri capabilities are minimal (`core:default` + window drag).
+- `freezePrototype` remains `false`: enabling it breaks Mermaid because the renderer assigns to `Object.prototype` (`Cannot assign to read only property 'valueOf'`). Mermaid is instead constrained by `securityLevel: "strict"`, `htmlLabels: false`, SVG script/event sanitization, and a CSP with no remote scripts or connections. Revisit if Mermaid rendering is isolated in a separate realm.
+- Remote font imports were removed; the UI uses local system fonts only.
 - See the source, tests and release notes for implementation details.
 
 ## Safe harbor

@@ -22,10 +22,8 @@ async function editorText() {
 }
 
 async function openCommand(name) {
-  await page.keyboard.press('Meta+Shift+P')
-  await page.waitForTimeout(60)
-  await page.keyboard.press('/')
-  await page.waitForTimeout(60)
+  await page.keyboard.press('Meta+k')
+  await page.locator('.palette-search input').waitFor({ state: 'visible' })
   await page.locator('.palette-search input').fill(name)
   await page.waitForTimeout(120)
   await page.locator('.palette-item').first().click()
@@ -56,20 +54,28 @@ try {
 
   assert.equal(
     await page.locator('.app').evaluate((node) => getComputedStyle(node).backgroundColor),
-    'rgb(40, 44, 52)',
+    'rgb(238, 240, 243)',
   )
   assert.equal(
     await page.locator('.status-mode').evaluate((node) => getComputedStyle(node).color),
-    'rgb(129, 162, 190)',
+    'rgb(87, 96, 106)',
   )
 
   step('Tiling shell starts with one numbered plain workspace')
   assert.equal(await page.locator('.tiling-tab').count(), 1)
   assert.equal(await page.locator('.tiling-tab .tab-label').first().innerText(), 'untitled-1')
-  assert.equal(await page.locator('.status-mode').innerText(), 'PLAIN')
+  assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
   assert.equal(await page.locator('.workspace-editor').count(), 1)
   assert.equal(await page.locator('#welcome, .welcome').count(), 0)
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark')
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light')
+
+  step('blank editor advertises ⌘⇧P; Space remains text input')
+  assert.equal(await page.locator('.empty-editor-shortcuts kbd').last().innerText(), '⌘⇧P 快捷命令')
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Space')
+  assert.equal(await page.locator('.cm-content').textContent(), ' ')
+  assert.equal(await page.locator('.command-palette, .palette-quick').count(), 0)
+  await page.keyboard.press('Backspace')
 
   step('⌘= / ⌘- zoom interface; ⌘0 resets')
   await page.locator('.cm-content').click()
@@ -127,7 +133,7 @@ try {
   await page.waitForTimeout(150)
   await pasteText('plain text after clear')
   await page.waitForTimeout(500)
-  assert.equal(await page.locator('.status-mode').innerText(), 'PLAIN')
+  assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
   assert.match(await page.locator('.cm-content').innerText(), /plain text after clear/)
   // Clear plain, then paste JSON again.
   await page.locator('.cm-content').click()
@@ -158,7 +164,7 @@ try {
   await page.waitForTimeout(120)
   await page.getByRole('option', { name: /PLAIN/ }).click()
   await page.waitForTimeout(250)
-  assert.equal(await page.locator('.status-mode').innerText(), 'PLAIN')
+  assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
   await page.locator('.status-action').filter({ hasText: '搜索' }).click()
   await page.waitForTimeout(250)
   assert.equal(await page.locator('.cm-search').count(), 1)
@@ -240,11 +246,11 @@ try {
   await openCommand('设置')
   assert.equal(await page.locator('.settings-dialog').count(), 1)
   const themeRow = page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).first()
-  assert.equal(await themeRow.locator('select').inputValue(), 'ghostty')
+  assert.equal(await themeRow.locator('select').inputValue(), 'light')
   await themeRow.locator('select').selectOption('light')
   await page.waitForTimeout(250)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'light')
-  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(255, 255, 255)')
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(238, 240, 243)')
   await themeRow.locator('select').selectOption('solarized-light')
   await page.waitForTimeout(300)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'solarized-light')
@@ -267,8 +273,8 @@ try {
   assert.match(await page.locator('.cm-content').getAttribute('class'), /cm-lineWrapping/)
   await page.locator('.settings-dialog').getByRole('button', { name: '关闭', exact: true }).click()
   await page.waitForTimeout(150)
-  assert.match(await page.locator('.tiling-statusbar').innerText(), /UTF-8/)
-  assert.match(await page.locator('.tiling-statusbar').innerText(), /LF/)
+  assert.match(await page.locator('.tiling-statusbar').innerText(), /10 字符，2 行/)
+  assert.match(await page.locator('.tiling-statusbar').innerText(), /⌘⇧P 快捷命令/)
 
   step('command palette toggles wrap')
   await openCommand('关闭自动换行')
@@ -293,6 +299,7 @@ try {
     ['Pipeline 批处理', 'Pipeline 批处理'],
     ['格式转换', '格式转换'],
     ['cURL 请求', 'cURL 请求'],
+    ['Mermaid 预览', 'Mermaid 预览'],
   ]) {
     await openCommand(command)
     assert.equal(await page.locator('.side-tool-split').count(), 1)
@@ -312,10 +319,8 @@ try {
   assert.equal(await page.locator('.side-tool-split').count(), 0)
 
   step('command palette english aliases')
-  await page.keyboard.press('Meta+Shift+P')
-  await page.waitForTimeout(60)
-  await page.keyboard.press('/')
-  await page.waitForTimeout(60)
+  await page.keyboard.press('Meta+k')
+  await page.locator('.palette-search input').waitFor({ state: 'visible' })
   await page.locator('.palette-search input').fill('settings')
   await page.waitForTimeout(160)
   assert.match(await page.locator('.palette-item').first().innerText(), /设置/)
@@ -389,6 +394,37 @@ try {
   await page.waitForTimeout(250)
   assert.equal(await page.locator('.cm-search').count(), 1)
   await page.keyboard.press('Escape')
+
+  step('Mermaid renders editor source into a local SVG preview')
+  if ((await page.locator('.status-mode').innerText()) !== '普通文本') {
+    await page.locator('.status-mode').click()
+    await page.getByRole('option', { name: /PLAIN/ }).click()
+    await page.waitForTimeout(200)
+  }
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.insertText('flowchart LR\n  A[编辑] --> B[预览]')
+  await page.waitForTimeout(150)
+  await openCommand('Mermaid 预览')
+  assert.equal(await page.locator('.mermaid-side').count(), 1)
+  await page.waitForTimeout(900)
+  assert.equal(await page.locator('.mermaid-error').count(), 0)
+  assert.ok((await page.locator('.mermaid-canvas svg').count()) > 0)
+  assert.match(await page.locator('.mermaid-status').innerText(), /SVG 预览/)
+  const mermaidColors = await page.locator('.cm-content .cm-line span').evaluateAll((nodes) =>
+    nodes.map((node) => getComputedStyle(node).color),
+  )
+  assert.ok(mermaidColors.includes('rgb(129, 162, 190)'), 'Mermaid keywords should be highlighted')
+  assert.ok(mermaidColors.includes('rgb(204, 102, 102)'), 'Mermaid arrows should be highlighted')
+  await page.locator('.mermaid-toolbar .btn.ghost').filter({ hasText: '示例' }).click()
+  await page.waitForTimeout(150)
+  assert.equal(await page.locator('.mermaid-example-item').count(), 28)
+  await page.locator('.mermaid-example-item').filter({ hasText: '时序图' }).click()
+  await page.waitForTimeout(850)
+  assert.match(await page.locator('.cm-content').innerText(), /sequenceDiagram/)
+  assert.equal(await page.locator('.mermaid-error').count(), 0)
+  assert.ok((await page.locator('.mermaid-canvas svg').count()) > 0)
+  await closeOpenTool()
 
   step('QR opens as editor/preview split, singleton')
   await page.locator('.cm-content').click()
@@ -464,13 +500,13 @@ try {
   assert.equal(await page.locator('.close-confirm').count(), 0)
   assert.equal(await page.locator('.tiling-tab').count(), 1)
 
-  step('old Cmd+K and Cmd+, do not trigger removed shortcuts')
+  step('Cmd+K toggles the command palette; Cmd+, remains unused')
   await page.keyboard.press('Meta+,')
   await page.waitForTimeout(150)
   assert.equal(await page.locator('.settings-dialog').count(), 0)
   await page.keyboard.press('Meta+k')
   await page.waitForTimeout(200)
-  assert.equal(await page.locator('.palette').count(), 0)
+  assert.equal(await page.locator('.palette').count(), 1)
   await page.keyboard.press('Meta+k')
   await page.waitForTimeout(200)
   assert.equal(await page.locator('.palette').count(), 0)

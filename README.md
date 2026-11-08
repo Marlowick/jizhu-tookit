@@ -6,7 +6,7 @@
 
 No account, no telemetry. Local processing by default; only explicit cURL request/diff actions contact a target URL.
 
-> **Public version 1.0.0 · Tiling workspace · source-only**
+> **Public version 1.1.0 · Tiling workspace · source-only**
 > macOS-first. A Sublime-inspired, themeable tiling workspace with plain/JSON editors and tool panels.
 
 ![jizhu tiling workspace: JSON mode with synchronized tree and syntax-highlighted editor](screenshots/tiling-json-mode.png)
@@ -25,7 +25,7 @@ This repository is **source-only**:
 - A workspace is a Plain / JSON / Calc editor; one normal Diff panel or one side tool can be open at a time.
 - Panels and side tools open from the command palette.
 - `Esc` no longer closes tools; `⌘W` asks before closing the current tool/panel or a tab with content, and the confirmation names the exact tool or workspace. Empty tabs close directly; tool state stays on the tab and is restored on reopen.
-- The default theme is Ghostty Dark; Light, Solarized Light and Solarized Dark are available in Settings.
+- The default theme is Light; Ghostty Dark, Solarized Light and Solarized Dark are available in Settings.
 
 ## Features
 
@@ -40,14 +40,14 @@ This repository is **source-only**:
   - Pasting into a blank editor (new workspace or after clearing) detects JSON object/array and switches to JSON; any other paste switches to Plain.
 - **Quick commands / command palette** (`⌘⇧P`)
   - Opens as a single-key command list without focusing an input, so Chinese IMEs do not slow it down.
-  - Press `S` settings, `V` mode, `F` format JSON, `M` minify, `J` jq, `D` Diff, `R` Regex, and so on; the key is shown beside each command.
+  - Press `S` settings, `V` mode, `F` format JSON, `M` minify, `G` Mermaid, `J` jq, `D` Diff, `R` Regex, and so on; the key is shown beside each command.
   - Press `/` to switch to the searchable list; every command has an English alias (e.g. `settings` finds 设置).
 - **Input sources**
   - Only Diff keeps a source selector: selected text, current workspace tab, or manual input.
   - QR / URL / Encode-decode / Time / jq / Regex / Pipeline / Data format / cURL read the left editor directly and have no separate input field.
 - **Panels**
-  - jq query, Diff, QR, Pipeline, URL inspector, Time, Regex, Encode/decode, Data format, cURL request.
-  - QR / URL / Encode-decode / Time / jq / Regex / Pipeline / Data format / cURL request are singleton side splits with a draggable divider, sharing the same editor-left / tool-right layout. Only one side tool is open at a time.
+  - jq query, Diff, QR, Pipeline, URL inspector, Time, Regex, Encode/decode, Data format, cURL request, Mermaid preview.
+  - QR / URL / Encode-decode / Time / jq / Regex / Pipeline / Data format / cURL request / Mermaid are singleton side splits with a draggable divider, sharing the same editor-left / tool-right layout. Only one side tool is open at a time.
   - QR is a singleton editor/preview split: the left editor content feeds the right preview, with no separate QR input field. The preview has no card background and uses 75% of the available pane size. Drag the divider to resize; double-click resets.
   - Diff supports text / JSON structure / URL structure / cURL responses. cURL mode runs both commands, then compares the original command, sorted response headers, and JSON-formatted body.
   - JSON formatting keeps an object on one line when its spaced dump is under 79 characters; larger objects put each key on its own line. Arrays stay multi-line, with small nested objects inlined.
@@ -55,13 +55,14 @@ This repository is **source-only**:
   - Regex uses Python-style syntax (`(?P<name>...)`, `(?P=name)`, lookarounds), shows `matchN start-end text`, highlights every match in the editor, and marks the selected match. Match/aggregate lists are virtualized; replacement is a separate on-demand tab with sortable result/count/percentage rows.
   - Data format converts YAML / TOML ↔ JSON from the left editor, with copy and write-back.
   - cURL request parses the left editor's curl command and shows response headers/body on demand; nothing is sent until “发送”.
+  - Mermaid renders the left editor locally as SVG, with 60–250% zoom, reset, copy SVG and theme-aware colors. While the tool is open, the plain editor highlights Mermaid keywords, arrows, strings and comments. An example library covers 28 diagrams in Basic and Real-world groups (flowchart, sequence, class, state, ER, Gantt, pie, mindmap, journey, GitGraph, quadrant, requirement, timeline, XYChart, C4, Sankey, plus real API/CI/order/domain/release/architecture/funnel/prioritization/incident/onboarding scenarios). Rendering is debounced and errors stay in the preview pane.
   - cURL request supports common flags (`-X`, `-H`, `-d`, `--json`, `-L`, `-k`, `-u`, `-A`, `-b`); multipart forms and @file bodies are not supported yet.
   - Pipeline uses the left editor as its only input; its right pane has numbered step rows on top and results below, with inline step configuration. jq/codec/regex/count steps and workflow import/export remains; exported workflow JSON contains only version/name/steps, never editor data.
   - QR preview supports copy/zoom; file export is intentionally not exposed in this milestone.
 - **Settings**: Ghostty / Light / Solarized theme, editor font size, interface scale, JSON indent, language, shortcuts, about. Wrap defaults on. Open it from the command palette; `⌘,` is no longer bound.
   - The bottom status bar is interactive: click `PLAIN`/`JSON`/`CALC` to switch the editor language; click `⌘F 搜索` to open the editor find bar; click `⌘⇧P 命令` to open the command palette.
 - **Calc mode (MVP)**: four-operator arithmetic, precedence/parentheses, one independent expression per line, and inline results at line end. Evaluation is debounced by 400ms; existing answers stay visible while typing and are only rebuilt when the calculated data actually changes. Variables (`price = 100`, `price * 2`) are substituted in the answer, e.g. `2 * 8 = 16`; a line containing only a variable shows its value. Built-ins: `abs, sqrt, round, floor, ceil, min, max, pow, mod, log` (base 10), `ln, exp, sin, cos, tan` (radians), `sum`, `datetime(timestamp)` / `timestamp(timestamp)` for readable local time, plus constants `pi` and `e`. A Calc help card appears for empty documents with examples and a fill button. Syntax, undefined-variable and division-by-zero errors stay inline; prose lines are ignored.
-- **Theme**: Ghostty Dark default, plus Light, Solarized Light and Solarized Dark, mapped to UI surfaces and syntax highlighting. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Theme**: Light default, plus Ghostty Dark, Solarized Light and Solarized Dark, mapped to UI surfaces and syntax highlighting. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **Security**: strict CSP, `withGlobalTauri: false`, no fs/shell/http plugins, jaq/regex sandboxed in worker subprocesses. jq no longer invokes a system `jq` binary. The cURL tool invokes the fixed system `/usr/bin/curl` binary with argument arrays (no shell interpolation) and only after an explicit user action.
 - **Session restore**: workspace tabs, documents, panel layout and tool state persist locally.
 

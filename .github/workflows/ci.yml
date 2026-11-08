@@ -67,6 +67,10 @@ jobs:
           done
           node scripts/tiling-ui-check.mjs
           node scripts/feature-check.mjs
+          node scripts/calc-ui-check.mjs
+          node scripts/theme-ui-check.mjs
+          node scripts/settings-ui-check.mjs
+          node scripts/design-ui-check.mjs
 
   audit:
     runs-on: ubuntu-latest

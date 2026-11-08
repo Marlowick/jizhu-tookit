@@ -194,7 +194,7 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
         indentUnit.of(indent === 0 ? '\t' : ' '.repeat(indent)),
         EditorState.tabSize.of(indent === 0 ? 4 : indent),
       ]),
-      placeholder(`${t('editor.placeholder.json')}\n${t('editor.hint', { mod: modKey('⇧P') })}`),
+      placeholder(`${t('editor.placeholder.json')}\n${t('editor.hint', { mod: modKey('K') })}`),
       EditorView.contentAttributes.of({ 'aria-label': 'JSON 文本编辑器' }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {

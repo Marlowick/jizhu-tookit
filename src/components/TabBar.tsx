@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Braces, Calculator, FileText, GitBranch, Plus, X } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
 import { useI18n } from '../core/useI18n'
 import type { Doc, Tab } from '../core/types'
@@ -21,6 +21,14 @@ function tabLabel(tab: Tab, docs: Record<string, Doc>): string {
     if (doc) return doc.title
   }
   return tab.title
+}
+
+function TabModeIcon({ tab }: { tab: Tab }) {
+  const mode = tab.workspace?.mode ?? 'plain'
+  if (tab.workspace?.sideTool === 'mermaid') return <GitBranch className="tab-mode-icon" size={12} strokeWidth={1.8} />
+  if (mode === 'json') return <Braces className="tab-mode-icon" size={12} strokeWidth={1.8} />
+  if (mode === 'calc') return <Calculator className="tab-mode-icon" size={12} strokeWidth={1.8} />
+  return <FileText className="tab-mode-icon" size={12} strokeWidth={1.8} />
 }
 
 interface TabBarProps {
@@ -51,8 +59,12 @@ export function TabBar({ onNewTab }: TabBarProps) {
   return (
     <>
       <nav className={`tabbar tiling-tabbar ${density}`} aria-label="工作区标签" data-tauri-drag-region>
+        <button className="tab-new" onClick={onNewTab} title={t('tab.new')} aria-label={t('tab.new')}>
+          <Plus size={12} strokeWidth={1.8} />
+        </button>
         {tabs.map((tab, index) => {
           const label = tabLabel(tab, docs)
+          const dirty = Boolean(tab.docId && docs[tab.docId]?.dirty)
           return (
             <div
               key={tab.id}
@@ -66,24 +78,24 @@ export function TabBar({ onNewTab }: TabBarProps) {
               tabIndex={-1}
               title={`${index + 1} · ${label}`}
             >
+              <TabModeIcon tab={tab} />
               <span className="tab-label">{label}</span>
-              <button
-                className="tab-close"
-                aria-label={t('tab.close')}
-                title={t('tab.close')}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  requestClose(tab)
-                }}
-              >
-                <X size={11} strokeWidth={2} />
-              </button>
+              {dirty ? <span className="tab-dirty-dot" aria-label="未保存" /> : (
+                <button
+                  className="tab-close"
+                  aria-label={t('tab.close')}
+                  title={t('tab.close')}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    requestClose(tab)
+                  }}
+                >
+                  <X size={9} strokeWidth={2} />
+                </button>
+              )}
             </div>
           )
         })}
-        <button className="tab-new" onClick={onNewTab} title={t('tab.new')} aria-label={t('tab.new')}>
-          <Plus size={15} strokeWidth={1.8} />
-        </button>
       </nav>
 
       {confirming ? (

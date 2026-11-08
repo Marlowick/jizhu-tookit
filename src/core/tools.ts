@@ -13,4 +13,5 @@ export const TOOL_LABEL: Record<TabTool, string> = {
   pipeline: '管道处理',
   data: '格式转换',
   curl: 'cURL 请求',
+  mermaid: 'Mermaid 预览',
 }

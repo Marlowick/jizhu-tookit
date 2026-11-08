@@ -1,5 +1,17 @@
 import { lazy, Suspense, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Binary,
+  Clock3,
+  Link2,
+  ListFilter,
+  Regex,
+  SquareTerminal,
+  Workflow,
+  X,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAppStore } from '../../store/appStore'
 import type { Doc, SideToolType, Tab } from '../../core/types'
 import { PlainEditor } from './PlainEditor'
@@ -9,6 +21,7 @@ const PipelineTool = lazy(() => import('../PipelineTool').then((module) => ({ de
 const JqTool = lazy(() => import('../JqTool').then((module) => ({ default: module.JqTool })))
 const RegexTool = lazy(() => import('../RegexTool').then((module) => ({ default: module.RegexTool })))
 const UrlTool = lazy(() => import('../UrlTool').then((module) => ({ default: module.UrlTool })))
+const MermaidPane = lazy(() => import('./MermaidPane').then((module) => ({ default: module.MermaidPane })))
 const CurlSidePane = lazy(() => import('./CurlSidePane').then((module) => ({ default: module.CurlSidePane })))
 const DataConvertPane = lazy(() => import('./DataConvertPane').then((module) => ({ default: module.DataConvertPane })))
 const CodecSidePane = lazy(() => import('./CodecSidePane').then((module) => ({ default: module.CodecSidePane })))
@@ -31,6 +44,20 @@ const SIDE_TITLES: Record<SideToolType, string> = {
   pipeline: 'Pipeline 批处理',
   data: '格式转换',
   curl: 'cURL 请求',
+  mermaid: 'Mermaid 预览',
+}
+
+const SIDE_ICONS: Record<SideToolType, LucideIcon> = {
+  qr: Link2,
+  url: Link2,
+  codec: Binary,
+  time: Clock3,
+  jq: Zap,
+  regex: Regex,
+  pipeline: ListFilter,
+  data: ArrowLeftRight,
+  curl: SquareTerminal,
+  mermaid: Workflow,
 }
 
 function EditorPane({ tab, doc }: WorkspaceViewProps) {
@@ -57,6 +84,7 @@ function EditorPane({ tab, doc }: WorkspaceViewProps) {
         text={doc.text}
         docId={doc.id}
         calc={mode === 'calc'}
+        mermaid={mode === 'plain' && tab.workspace?.sideTool === 'mermaid'}
         highlights={editorHighlights}
         wordWrap={wordWrap}
         onChange={(value) => setText(doc.id, value)}
@@ -67,11 +95,14 @@ function EditorPane({ tab, doc }: WorkspaceViewProps) {
   )
 }
 
-function SideToolShell({ title, onClose, syncText = '来自左侧编辑器 · 实时更新', children }: { title: string; onClose: () => void; syncText?: string; children: ReactNode }) {
+function SideToolShell({ tool, title, onClose, syncText = '来自左侧编辑器 · 实时更新', children }: { tool: SideToolType; title: string; onClose: () => void; syncText?: string; children: ReactNode }) {
+  const Icon = SIDE_ICONS[tool]
   return (
     <div className="side-tool-shell">
       <header className="side-tool-shell-head">
+        <Icon className="side-tool-header-icon" size={14} strokeWidth={1.8} />
         <strong>{title}</strong>
+        <span className="side-tool-source-badge">输入：当前文档</span>
         <span className="side-tool-shell-sync">{syncText}</span>
         <button className="btn ghost workspace-panel-icon" onClick={onClose} title={`关闭${title}`} aria-label={`关闭${title}`}>
           <X size={14} strokeWidth={1.8} />
@@ -97,7 +128,7 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
   const sideTool = workspace.sideTool
 
   if (sideTool) {
-    const ratio = Math.min(0.72, Math.max(0.28, workspace.sideSplit ?? workspace.qrSplit ?? 0.54))
+    const ratio = Math.min(0.72, Math.max(0.28, workspace.sideSplit ?? workspace.qrSplit ?? 0.55))
     const setRatio = (next: number) => setSideSplit(tab.id, Math.min(0.72, Math.max(0.28, next)))
     const close = () => closeSideTool(tab.id)
     const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -146,7 +177,7 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
           tabIndex={0}
           onPointerDown={startDrag}
           onKeyDown={onKeyDown}
-          onDoubleClick={() => setRatio(0.54)}
+          onDoubleClick={() => setRatio(0.55)}
           title="拖动调整宽度，双击复位"
         />
         <div className="workspace-qr-preview">
@@ -155,9 +186,10 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
             <QrPreviewPane tab={tab} doc={doc} onClose={close} />
           ) : (
             <SideToolShell
+              tool={sideTool}
               title={SIDE_TITLES[sideTool]}
               onClose={close}
-              syncText={['url', 'codec', 'time', 'data'].includes(sideTool) ? '来自左侧编辑器 · 实时更新' : '来自左侧编辑器 · 手动运行'}
+              syncText={['url', 'codec', 'time', 'data', 'mermaid'].includes(sideTool) ? '来自左侧编辑器 · 实时更新' : '来自左侧编辑器 · 手动运行'}
             >
               {sideTool === 'url' ? (
                 <UrlTool
@@ -178,8 +210,10 @@ export function WorkspaceView({ tab, doc }: WorkspaceViewProps) {
                 <PipelineTool tab={tab} embedded source={doc.text} />
               ) : sideTool === 'data' ? (
                 <DataConvertPane tab={tab} doc={doc} />
-              ) : (
+              ) : sideTool === 'curl' ? (
                 <CurlSidePane tab={tab} doc={doc} />
+              ) : (
+                <MermaidPane tab={tab} doc={doc} />
               )}
             </SideToolShell>
           )}

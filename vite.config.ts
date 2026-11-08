@@ -16,10 +16,14 @@ export default defineConfig({
   build: {
     target: 'safari15',
     sourcemap: false,
+    // Mermaid is a single optional lazy-rendering engine (~4.9 MB raw,
+    // ~1.38 MB gzip) and is never part of the initial UI chunk.
+    chunkSizeWarningLimit: 5200,
     rolldownOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
+          if (id.includes('mermaid') || id.includes('dagre') || id.includes('d3')) return 'mermaid'
           if (id.includes('@codemirror') || id.includes('@lezer')) return 'codemirror'
           if (id.includes('/yaml/') || id.includes('smol-toml')) return 'data-formats'
           if (id.includes('qrcode')) return 'qrcode'

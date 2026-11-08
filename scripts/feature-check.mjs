@@ -160,10 +160,8 @@ await page.addInitScript(() => {
 
 const log = (message) => console.log(`• ${message}`)
 async function openCommand(name) {
-  await page.keyboard.press('Meta+Shift+P')
-  await page.waitForTimeout(60)
-  await page.keyboard.press('/')
-  await page.waitForTimeout(60)
+  await page.keyboard.press('Meta+k')
+  await page.locator('.palette-search input').waitFor({ state: 'visible' })
   await page.locator('.palette-search input').fill(name)
   await page.waitForTimeout(120)
   await page.locator('.palette-item').first().click()
@@ -202,10 +200,10 @@ try {
   await page.goto('http://127.0.0.1:1420/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(350)
 
-  log('startup / dark / empty plain workspace')
+  log('startup / light / empty plain workspace')
   assert.equal(await page.locator('.tiling-tab').count(), 1)
-  assert.equal(await page.locator('.status-mode').innerText(), 'PLAIN')
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark')
+  assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light')
   assert.equal(await page.locator('.workspace-editor').count(), 1)
   assert.equal(await page.locator('.tool-header').count(), 0)
 
@@ -261,7 +259,7 @@ try {
   await openCommand('设置')
   assert.equal(await page.locator('.settings-dialog').count(), 1)
   const themeSelect = page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).first().locator('select')
-  assert.equal(await themeSelect.inputValue(), 'ghostty')
+  assert.equal(await themeSelect.inputValue(), 'light')
   await themeSelect.selectOption('solarized-light')
   await page.waitForTimeout(250)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'solarized-light')

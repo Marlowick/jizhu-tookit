@@ -7,6 +7,7 @@ import {
   Braces,
   Clock3,
   Copy,
+  GitBranch,
   GitCompare,
   Link2,
   Minimize2,
@@ -23,7 +24,7 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
-import { CommandPalette } from './components/CommandPalette'
+import { CommandPalette, type PaletteMode } from './components/CommandPalette'
 import { ModePicker } from './components/ModePicker'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StatusBar } from './components/StatusBar'
@@ -59,6 +60,7 @@ const QUICK_PANEL_KEYS: Record<WorkspacePanelType, string> = {
   codec: 'e',
   data: 'x',
   curl: 'k',
+  mermaid: 'g',
 }
 
 const PANELS: Array<{
@@ -79,6 +81,7 @@ const PANELS: Array<{
   { type: 'codec', title: '编码 / 解码', english: 'Encode / Decode', description: 'Base64 / URL / HTML / Unicode / Hex', keywords: ['codec', 'base64', 'encode', 'decode'], icon: Binary },
   { type: 'data', title: '格式转换', english: 'Data format', description: 'YAML / TOML ↔ JSON，使用左侧编辑器输入', keywords: ['yaml', 'toml', 'json', 'convert'], icon: Braces },
   { type: 'curl', title: 'cURL 请求', english: 'cURL request', description: '解析左侧 curl 命令，查看响应 headers / body', keywords: ['curl', 'http', 'request', 'api'], icon: Terminal },
+  { type: 'mermaid', title: 'Mermaid 预览', english: 'Mermaid', description: '实时渲染 Mermaid 图，支持缩放与 SVG 复制', keywords: ['mermaid', 'diagram', 'graph', 'erd'], icon: GitBranch },
 ]
 
 interface ClosePrompt {
@@ -118,6 +121,7 @@ export default function App() {
   const closeTab = useAppStore((state) => state.closeTab)
 
   const workspace = activeTab?.workspace
+  const [paletteMode, setPaletteMode] = useState<PaletteMode>('search')
   const [modePickerOpen, setModePickerOpen] = useState(false)
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
 
@@ -249,9 +253,17 @@ export default function App() {
       const mod = isModPressed(event)
       const key = event.key.toLowerCase()
 
-      if (mod && event.shiftKey && key === 'p') {
+      if (mod && event.shiftKey && !event.altKey && key === 'p') {
         event.preventDefault()
-        setPaletteOpen(!paletteOpen)
+        if (!paletteOpen || paletteMode !== 'quick') setPaletteMode('quick')
+        setPaletteOpen(paletteMode === 'quick' ? !paletteOpen : true)
+        return
+      }
+
+      if (mod && !event.shiftKey && !event.altKey && key === 'k') {
+        event.preventDefault()
+        if (!paletteOpen || paletteMode !== 'search') setPaletteMode('search')
+        setPaletteOpen(paletteMode === 'search' ? !paletteOpen : true)
         return
       }
 
@@ -317,7 +329,7 @@ export default function App() {
         keywords: panel.keywords,
         description: panel.description,
         group: '面板 · 弹窗',
-        hint: ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl'].includes(panel.type) ? '分屏 · 单例' : '平铺',
+        hint: ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl', 'mermaid'].includes(panel.type) ? '分屏 · 单例' : '平铺',
         quickKey: QUICK_PANEL_KEYS[panel.type],
         icon: panel.icon,
         run: () => openWorkspacePanel(activeTab.id, panel.type),
@@ -485,15 +497,27 @@ export default function App() {
 
   return (
     <div className="app tiling-app">
-      <TitleBar showMockTraffic={!isTauri}>
+      <TitleBar
+        showMockTraffic={!isTauri}
+        onOpenPalette={() => {
+          setPaletteMode('search')
+          setPaletteOpen(true)
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
+      >
         <TabBar onNewTab={newWorkspace} />
       </TitleBar>
       <main className="workspace tiling-workspace">
         <WorkspaceView tab={activeTab} doc={activeDoc} />
       </main>
-      <StatusBar />
+      <StatusBar
+        onOpenQuickCommands={() => {
+          setPaletteMode('quick')
+          setPaletteOpen(true)
+        }}
+      />
       {paletteOpen ? (
-        <CommandPalette items={commands} onClose={() => setPaletteOpen(false)} />
+        <CommandPalette initialMode={paletteMode} items={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}
       {settingsOpen ? <SettingsDialog /> : null}
       {modePickerOpen ? (

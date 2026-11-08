@@ -1,4 +1,4 @@
-export type ToolId = 'json' | 'jq' | 'diff' | 'url' | 'time' | 'codec' | 'regex' | 'qr' | 'pipeline' | 'data' | 'curl'
+export type ToolId = 'json' | 'jq' | 'diff' | 'url' | 'time' | 'codec' | 'regex' | 'qr' | 'pipeline' | 'data' | 'curl' | 'mermaid'
 export type TabTool = ToolId | 'welcome'
 
 export interface EditorHighlightRange {
@@ -69,8 +69,8 @@ export interface Doc {
 }
 
 export type WorkspaceMode = 'plain' | 'json' | 'calc'
-export type SideToolType = 'qr' | 'url' | 'codec' | 'time' | 'jq' | 'regex' | 'pipeline' | 'data' | 'curl'
-export type WorkspacePanelType = 'jq' | 'diff' | 'qr' | 'pipeline' | 'url' | 'time' | 'regex' | 'codec' | 'data' | 'curl'
+export type SideToolType = 'qr' | 'url' | 'codec' | 'time' | 'jq' | 'regex' | 'pipeline' | 'data' | 'curl' | 'mermaid'
+export type WorkspacePanelType = 'jq' | 'diff' | 'qr' | 'pipeline' | 'url' | 'time' | 'regex' | 'codec' | 'data' | 'curl' | 'mermaid'
 
 export type InputSource = 'selection' | 'tab' | 'manual'
 

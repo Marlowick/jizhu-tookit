@@ -1,18 +1,19 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Search } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Keyboard, Search } from 'lucide-react'
 import type { CommandItem } from '../core/commands'
 import { useI18n } from '../core/useI18n'
 
+export type PaletteMode = 'quick' | 'search'
+
 interface CommandPaletteProps {
   items: CommandItem[]
+  initialMode?: PaletteMode
   onClose: () => void
 }
 
-type PaletteMode = 'quick' | 'search'
-
-export function CommandPalette({ items, onClose }: CommandPaletteProps) {
+export function CommandPalette({ items, initialMode = 'search', onClose }: CommandPaletteProps) {
   const { t } = useI18n()
-  const [mode, setMode] = useState<PaletteMode>('quick')
+  const [mode, setMode] = useState<PaletteMode>(initialMode)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -63,7 +64,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
     return [...result.entries()]
   }, [displayed])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Quick mode deliberately does NOT focus an input: this avoids activating
     // the Chinese IME until the user explicitly asks for search.
     if (mode === 'quick') panelRef.current?.focus()
@@ -150,7 +151,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
 
   return (
     <div
-      className="palette-backdrop"
+      className={`palette-backdrop ${mode === 'quick' ? 'palette-backdrop-quick' : ''}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -164,84 +165,98 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
         tabIndex={-1}
         onKeyDown={onKeyDown}
       >
-        <div className="palette-search">
-          <Search size={17} strokeWidth={1.7} />
-          {mode === 'quick' ? (
-            <button className="palette-quick-trigger" onClick={startSearch}>
-              {t('palette.quickHint')}
-              <small>{t('palette.quickSearch')}</small>
-            </button>
-          ) : (
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('palette.search')}
-              aria-label={t('palette.searchAria')}
-            />
-          )}
-          <span className="palette-scope">{mode === 'quick' ? 'A–Z' : t('palette.scope')}</span>
-        </div>
-
-        <div className="palette-list" role="listbox" ref={listRef}>
-          {groups.length === 0 ? (
-            <div className="palette-empty">{t('palette.empty')}</div>
-          ) : (
-            groups.map(([group, groupItems]) => (
-              <div key={group}>
-                <div className="palette-group">{group}</div>
-                {groupItems.map((item) => {
-                  const index = indexOf.get(item.id) ?? 0
-                  const Icon = item.icon
-                  return (
-                    <div
-                      key={item.id}
-                      className={`palette-item ${index === active ? 'active' : ''}`}
-                      role="option"
-                      aria-selected={index === active}
-                      onMouseMove={() => setActive(index)}
-                      onClick={() => execute(item)}
-                    >
-                      {mode === 'quick' && item.quickKey ? (
-                        <kbd className="quick-key">{item.quickKey.toUpperCase()}</kbd>
-                      ) : null}
-                      <span className="item-icon">
-                        {Icon ? <Icon size={15} strokeWidth={1.6} /> : null}
-                      </span>
-                      <span className="item-copy">
-                        <span className="palette-item-title">
-                          {item.title}
-                          <em className="item-english">{item.english}</em>
-                        </span>
-                        {item.description ? (
-                          <span className="item-description">{item.description}</span>
-                        ) : null}
-                      </span>
-                      {item.hint ? <span className="hint">{item.hint}</span> : null}
-                    </div>
-                  )
-                })}
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="palette-footer">
-          {mode === 'quick' ? (
-            <>
-              <span>{t('palette.quickExecute')}</span>
-              <span>{t('palette.quickSearch')}</span>
-              <span>{t('palette.close')}</span>
-            </>
-          ) : (
-            <>
+        {mode === 'quick' ? (
+          <>
+            <header className="quick-command-header">
+              <Keyboard size={13} strokeWidth={1.7} />
+              <strong>{t('palette.quickHint')}</strong>
+              <button onClick={onClose}>{t('palette.quickCancel')}</button>
+            </header>
+            <div className="quick-command-grid" role="listbox" ref={listRef}>
+              {groups.map(([group, groupItems]) => (
+                <section className="quick-command-group" key={group}>
+                  <div className="quick-command-group-title">{group}</div>
+                  {groupItems.map((item) => {
+                    const index = indexOf.get(item.id) ?? 0
+                    return (
+                      <div
+                        key={item.id}
+                        className={`palette-item quick-command-item ${index === active ? 'active' : ''}`}
+                        role="option"
+                        aria-selected={index === active}
+                        onMouseMove={() => setActive(index)}
+                        onClick={() => execute(item)}
+                      >
+                        <kbd className="quick-key">{item.quickKey}</kbd>
+                        <span>{item.title}</span>
+                      </div>
+                    )
+                  })}
+                </section>
+              ))}
+            </div>
+            <footer className="quick-command-footer">{t('palette.quickContinue')}</footer>
+          </>
+        ) : (
+          <>
+            <div className="palette-search">
+              <Search size={17} strokeWidth={1.7} />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t('palette.search')}
+                aria-label={t('palette.searchAria')}
+              />
+              <span className="palette-scope">{t('palette.scope')}</span>
+            </div>
+            <div className="palette-list" role="listbox" ref={listRef}>
+              {groups.length === 0 ? (
+                <div className="palette-empty">{t('palette.empty')}</div>
+              ) : (
+                groups.map(([group, groupItems]) => (
+                  <div key={group}>
+                    <div className="palette-group">{group}</div>
+                    {groupItems.map((item) => {
+                      const index = indexOf.get(item.id) ?? 0
+                      const Icon = item.icon
+                      return (
+                        <div
+                          key={item.id}
+                          className={`palette-item ${index === active ? 'active' : ''}`}
+                          role="option"
+                          aria-selected={index === active}
+                          onMouseMove={() => setActive(index)}
+                          onClick={() => execute(item)}
+                        >
+                          <span className="item-icon">
+                            {Icon ? <Icon size={15} strokeWidth={1.6} /> : null}
+                          </span>
+                          <span className="item-copy">
+                            <span className="palette-item-title">
+                              {item.title}
+                              <em className="item-english">{item.english}</em>
+                            </span>
+                            {item.description ? (
+                              <span className="item-description">{item.description}</span>
+                            ) : null}
+                          </span>
+                          {item.hint ? <span className="hint">{item.hint}</span> : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="palette-footer">
               <span>{t('palette.select')}</span>
               <span>{t('palette.execute')}</span>
               <span>{t('palette.close')}</span>
-            </>
-          )}
-          <span className="keys">{t('palette.footer')}</span>
-        </div>
+              <span className="keys">{t('palette.footer')}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

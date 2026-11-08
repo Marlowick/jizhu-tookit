@@ -14,41 +14,43 @@ page.on('console', (message) => {
 })
 
 await page.goto('http://127.0.0.1:1420/', { waitUntil: 'networkidle' })
-await page.locator('.statusbar-settings').click()
+await page.locator('.titlebar-settings').click()
 await page.waitForTimeout(200)
-await page.locator('.settings-row select').first().selectOption('dark')
+await page.locator('.settings-row select').first().selectOption('ghostty')
 await page.waitForTimeout(250)
 assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
-assert.match(
-  await page.locator('body').evaluate((element) => getComputedStyle(element).backgroundColor),
-  /13, 17, 23/,
+assert.equal(
+  await page.locator('.app').evaluate((element) => getComputedStyle(element).backgroundColor),
+  'rgb(40, 44, 52)',
 )
 await page.screenshot({ path: '/tmp/jizhu-dark-settings.png' })
 await page.getByRole('button', { name: '关闭', exact: true }).last().click()
-await page.waitForTimeout(200)
-await page.getByRole('button', { name: /打开\s*JSON 编辑器/ }).click()
+await page.locator('.status-mode').click()
+await page.getByRole('option', { name: /JSON/ }).click()
+await page.locator('.cm-content').click()
+await page.keyboard.insertText('{"dark":true}')
 await page.waitForTimeout(500)
 await page.screenshot({ path: '/tmp/jizhu-dark-json.png' })
-assert.match(
+assert.equal(
   await page.locator('.cm-editor').evaluate((element) => getComputedStyle(element).color),
-  /230, 237, 243/,
+  'rgb(255, 255, 255)',
 )
-console.log('• dark theme applies to shell and editor')
+console.log('• Ghostty theme applies to shell and editor')
 
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(300)
 assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
 console.log('• theme persists across reload')
 
-await page.locator('.statusbar-settings').click()
-await page.locator('.settings-row select').first().selectOption('system')
-await page.waitForTimeout(250)
-const systemTheme = await page.locator('html').getAttribute('data-theme')
-assert.ok(systemTheme === 'light' || systemTheme === 'dark')
-await page.locator('.settings-row select').first().selectOption('light')
+await page.locator('.titlebar-settings').click()
+await page.locator('.settings-row select').first().selectOption('solarized-light')
 await page.waitForTimeout(250)
 assert.equal(await page.locator('html').getAttribute('data-theme'), 'light')
-console.log('• system and light modes switch ok')
+assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'solarized-light')
+await page.locator('.settings-row select').first().selectOption('light')
+await page.waitForTimeout(250)
+assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'light')
+console.log('• Solarized and design light modes switch ok')
 
 await browser.close()
 if (errors.length) {

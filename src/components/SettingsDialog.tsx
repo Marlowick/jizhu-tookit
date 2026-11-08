@@ -15,7 +15,8 @@ const TABS: Array<{ id: SettingsTab; icon: typeof Settings }> = [
 ]
 
 const SHORTCUTS: Array<[string, string]> = [
-  [modKey('⇧P'), 'settings.shortcut.command'],
+  [modKey('K'), 'settings.shortcut.palette'],
+  [modKey('⇧P'), 'settings.shortcut.quickCommand'],
   [modKey('F'), 'settings.shortcut.search'],
   [modKey('Z'), 'settings.shortcut.undo'],
   [modKey('⇧Z'), 'settings.shortcut.redo'],
@@ -247,7 +248,7 @@ export function SettingsDialog() {
 
           <footer className="settings-foot">
             <span>
-              {modKey('⇧P')} {t('settings.footer.palette')} · {t('settings.footer')}
+              {modKey('K')} {t('settings.footer.palette')} · {t('settings.footer')}
             </span>
             <button className="btn" onClick={() => setSettingsOpen(false)}>
               {t('common.close')}

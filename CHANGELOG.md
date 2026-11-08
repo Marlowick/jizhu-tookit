@@ -1,6 +1,28 @@
 # Changelog
 
-## 1.0.0 — Tiling workspace · 2026-11-05
+## 1.1.0 — Mermaid preview & quick commands · 2026-11-08
+
+### Added
+
+- Interface zoom: ⌘= / ⌘- in 10% steps, ⌘0 resets to 100%, persisted in settings.
+- Tabs now share the 40px top window strip; the separate title row was removed.
+- Added a neutral Light theme as a selectable theme.
+- Blank-editor paste now auto-detects JSON without requiring a prior clear.
+- JSON editor performance: debounced local persistence, deferred analysis/tree updates, and cheaper external-text synchronization.
+- Added Mermaid preview side tool: local SVG rendering, debounced updates, theme-aware colors, zoom/reset, copy SVG, sample, and error display. The plain editor gains Mermaid syntax highlighting while the tool is open. Added a scrollable 28-diagram example library split into Basic and Real-world groups; selecting an example switches the editor back to Plain mode.
+- Command palette now opens as a Helix-style single-key quick list with no focused input (IME-safe); press `/` for the searchable palette.
+- Production bundle is code-split: tools/panels load lazily, with separate React, CodeMirror, data-format, QR and icon chunks; the >500 kB warning is gone.
+- Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line/tree accents, and thinner scrollbars.
+- Fixed low-contrast text selection in light themes by forcing the CodeMirror selection layer to the active `--cm-selection` token.
+- Added Ghostty Dark, Solarized Light and Solarized Dark themes.
+- JSON editor now has a fold gutter, fold placeholders and CodeMirror fold keybindings.
+- Clearing a document and pasting JSON auto-switches to JSON; pasting non-JSON switches to Plain.
+- Calc adds `datetime(timestamp)` / `timestamp(timestamp)` readable local-time results.
+- Light theme is now the default; the titlebar has direct command/settings entries and the status bar shows mode, selection, character/line counts and active tool.
+- Added a bottom-right ⌘⇧P quick command grid with no focused input; ⌘K opens the searchable palette.
+- Added local-only fonts and removed remote font imports to preserve offline behavior and CSP.
+
+## 1.0.0 — Tiling workspace · 2026-11-02
 
 ### Added
 
@@ -16,19 +38,6 @@
 - Pipeline workflow export now contains only version/name/steps and never editor input.
 - Shortcuts: added ⌘1–⌘9 tab switching; ⌘W asks before closing the current tool/panel or a tab with content, and the confirmation names the target. Removed ⌘, ⌘⇧F, Ctrl+Alt+←/→, Alt+1–4 and the global Esc tool-close shortcut.
 - Command palette commands now expose English aliases; mode changes use a Plain/JSON/Calc picker.
-- Interface zoom: ⌘= / ⌘- in 10% steps, ⌘0 resets to 100%, persisted in settings.
-- Tabs now share the 40px top window strip; the separate title row was removed.
-- Added a neutral Light theme as a selectable theme.
-- Blank-editor paste now auto-detects JSON without requiring a prior clear.
-- JSON editor performance: debounced local persistence, deferred analysis/tree updates, and cheaper external-text synchronization.
-- Command palette now opens as a Helix-style single-key quick list with no focused input (IME-safe); press `/` for the searchable palette.
-- Production bundle is code-split: tools/panels load lazily, with separate React, CodeMirror, data-format, QR and icon chunks; the >500 kB warning is gone.
-- Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line/tree accents, and thinner scrollbars.
-- Fixed low-contrast text selection in light themes by forcing the CodeMirror selection layer to the active `--cm-selection` token.
-- Added Ghostty Dark, Solarized Light and Solarized Dark themes.
-- JSON editor now has a fold gutter, fold placeholders and CodeMirror fold keybindings.
-- Clearing a document and pasting JSON auto-switches to JSON; pasting non-JSON switches to Plain.
-- Calc adds `datetime(timestamp)` / `timestamp(timestamp)` readable local-time results.
 - Added YAML / TOML ↔ JSON data conversion.
 - Added cURL request tool (system curl, argument arrays, explicit send).
 - Added cURL response diff mode with original command, sorted response headers, and JSON-formatted body.

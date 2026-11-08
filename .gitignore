@@ -8,6 +8,7 @@ target/
 
 # 设计源文件：不公开
 ui/
+.kimi-design/
 *.psd
 *.psb
 

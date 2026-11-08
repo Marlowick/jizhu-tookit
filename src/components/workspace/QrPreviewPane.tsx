@@ -164,8 +164,9 @@ export function QrPreviewPane({ tab, doc, onClose }: QrPreviewPaneProps) {
   return (
     <div className="qr-preview-only">
       <header className="qr-preview-only-head">
-        <QrCode size={15} strokeWidth={1.8} />
+        <QrCode className="side-tool-header-icon" size={14} strokeWidth={1.8} />
         <strong>二维码预览</strong>
+        <span className="side-tool-source-badge">输入：当前文档</span>
         <span className="qr-preview-only-meta">
           {bytes} 字节 · {state.level} 级 · {renderSize}px
         </span>

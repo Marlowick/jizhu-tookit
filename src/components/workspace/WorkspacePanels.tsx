@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import {
   Asterisk,
   Braces,
+  GitBranch,
   Binary,
   Clock3,
   GitCompare,
@@ -39,6 +40,7 @@ const PANEL_META: Record<WorkspacePanelType, { title: string; icon: typeof Zap }
   codec: { title: '编码 / 解码', icon: Binary },
   data: { title: '格式转换', icon: Braces },
   curl: { title: 'cURL 请求', icon: Terminal },
+  mermaid: { title: 'Mermaid 预览', icon: GitBranch },
 }
 
 const DEFAULT_REGEX: RegexState = {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Sparkles, X } from 'lucide-react'
+import { BookOpen, Keyboard, Sparkles, X } from 'lucide-react'
 import {
   Compartment,
   EditorState,
@@ -30,6 +30,7 @@ import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { EDITOR_SEARCH_EVENT, EDITOR_UNDO_EVENT } from '../../core/editorActions'
 import { evaluateCalcLines, formatCalcNumber, type CalcLineResult } from '../../core/calc'
 import { editorPhrases } from '../../core/i18n'
+import { mermaidHighlighting } from '../../core/mermaidLanguage'
 import { modKey } from '../../core/keyboard'
 import { useI18n } from '../../core/useI18n'
 import type { Cursor, EditorHighlights } from '../../core/types'
@@ -186,6 +187,7 @@ interface PlainEditorProps {
   text: string
   docId: string
   calc?: boolean
+  mermaid?: boolean
   highlights?: EditorHighlights | null
   wordWrap: boolean
   onChange: (text: string) => void
@@ -193,13 +195,14 @@ interface PlainEditorProps {
   onSelection: (text: string) => void
 }
 
-export function PlainEditor({ text, docId, calc = false, highlights, wordWrap, onChange, onCursor, onSelection }: PlainEditorProps) {
+export function PlainEditor({ text, docId, calc = false, mermaid = false, highlights, wordWrap, onChange, onCursor, onSelection }: PlainEditorProps) {
   const { t, language } = useI18n()
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const wrapCompartment = useRef(new Compartment()).current
   const highlightCompartment = useRef(new Compartment()).current
   const placeholderCompartment = useRef(new Compartment()).current
+  const mermaidCompartment = useRef(new Compartment()).current
   const [calcResults, setCalcResults] = useState<CalcLineResult[]>([])
   const [helpOpen, setHelpOpen] = useState(false)
   const onChangeRef = useRef(onChange)
@@ -212,7 +215,9 @@ export function PlainEditor({ text, docId, calc = false, highlights, wordWrap, o
 
   const placeholderText = calc
     ? (language === 'en-US' ? 'Type an expression, e.g. 1 + 2 * 3' : '输入算式，例如 1 + 2 * 3')
-    : `${t('editor.placeholder.plain')}\n${t('editor.hint', { mod: modKey('⇧P') })}`
+    : mermaid
+      ? '输入 Mermaid 代码，例如 flowchart LR\nA --> B'
+      : `${t('editor.placeholder.plain')}\n${t('editor.hint', { mod: modKey('K') })}`
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -226,13 +231,14 @@ export function PlainEditor({ text, docId, calc = false, highlights, wordWrap, o
       search({ top: true }),
       ...(phrases ? [EditorState.phrases.of(phrases)] : []),
       plainTheme,
+      mermaidCompartment.of(mermaid ? mermaidHighlighting : []),
       wrapCompartment.of(wordWrap ? EditorView.lineWrapping : []),
       highlightCompartment.of(EditorView.decorations.of(highlightDecorations(docId, highlights))),
       calcDecorationField,
       EditorView.decorations.from(calcDecorationField),
       EditorState.tabSize.of(2),
       placeholderCompartment.of(placeholder(placeholderText)),
-      EditorView.contentAttributes.of({ 'aria-label': calc ? '计算编辑器' : '文本编辑器' }),
+      EditorView.contentAttributes.of({ 'aria-label': calc ? '计算编辑器' : mermaid ? 'Mermaid 编辑器' : '文本编辑器' }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChangeRef.current(update.state.doc.toString())
         if (update.selectionSet || update.docChanged) {
@@ -280,6 +286,12 @@ export function PlainEditor({ text, docId, calc = false, highlights, wordWrap, o
       effects: wrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
     })
   }, [wordWrap, wrapCompartment])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: mermaidCompartment.reconfigure(mermaid ? mermaidHighlighting : []),
+    })
+  }, [mermaid, mermaidCompartment])
 
   useEffect(() => {
     viewRef.current?.dispatch({
@@ -370,6 +382,17 @@ export function PlainEditor({ text, docId, calc = false, highlights, wordWrap, o
   return (
     <div className={`editor-host plain-editor ${calc ? 'calc-editor' : ''}`}>
       <div className="plain-editor-cm" ref={hostRef} />
+      {!calc && !mermaid && !text ? (
+        <div className="empty-editor-guide" aria-hidden="true">
+          <Keyboard size={34} strokeWidth={1.35} />
+          <strong>输入或粘贴内容开始</strong>
+          <span>粘贴大量内容时将自动识别 JSON 与 Mermaid</span>
+          <div className="empty-editor-shortcuts">
+            <kbd>⌘K 命令面板</kbd>
+            <kbd>⌘⇧P 快捷命令</kbd>
+          </div>
+        </div>
+      ) : null}
       {calc ? (
         <div className="calc-help">
           <button

@@ -28,15 +28,14 @@ import type {
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 function normalizeTheme(value: unknown): import('../core/types').ThemeMode {
-  if (value === 'solarized-dark' || value === 'solarized-light') return value
-  if (value === 'light' || value === 'deepseek-light') return 'light'
-  return 'ghostty'
+  if (value === 'solarized-dark' || value === 'solarized-light' || value === 'ghostty') return value
+  return 'light'
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'ghostty',
+  theme: 'light',
   language: 'zh-CN',
-  editorFontSize: 13,
+  editorFontSize: 12.5,
   uiScale: 1,
   formatIndent: DEFAULT_JSON_INDENT,
   wordWrap: true,
@@ -65,7 +64,7 @@ function createWorkspace(index: number): { tab: Tab; doc: Doc } {
       panels: [],
       activePanelId: null,
       maximizedPanelId: null,
-      sideSplit: 0.54,
+      sideSplit: 0.55,
     },
   }
   return { tab, doc }
@@ -391,7 +390,7 @@ export const useAppStore = create<AppState>()(
         const workspace = tab?.workspace
         if (!tab || !workspace) return
         // 二维码 / URL / 编码 / 时间使用右侧专用分屏，一次只显示一个。
-        const sideTypes: WorkspacePanelType[] = ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl']
+        const sideTypes: WorkspacePanelType[] = ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl', 'mermaid']
         if (sideTypes.includes(type)) {
           set((current) => ({
             selectionText: '',
@@ -589,10 +588,10 @@ export const useAppStore = create<AppState>()(
                   return {
                     ...tab.workspace,
                     sideTool,
-                    sideSplit: tab.workspace.sideSplit ?? tab.workspace.qrSplit ?? 0.54,
+                    sideSplit: tab.workspace.sideSplit ?? tab.workspace.qrSplit ?? 0.55,
                     panels: sideTool
                       ? []
-                      : normalized.filter((panel) => !['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl'].includes(panel.type)),
+                      : normalized.filter((panel) => !['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl', 'mermaid'].includes(panel.type)),
                   }
                 })(),
               }

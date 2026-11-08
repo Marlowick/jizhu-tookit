@@ -1,26 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronUp, X } from 'lucide-react'
+import { Check, ChevronDown, X } from 'lucide-react'
 import { requestEditorSearch } from '../core/editorActions'
 import { modKey } from '../core/keyboard'
+import { TOOL_LABEL } from '../core/tools'
 import { APP_VERSION } from '../core/version'
 import type { WorkspaceMode } from '../core/types'
 import { selectActiveDoc, selectActiveTab, useAppStore } from '../store/appStore'
 
-export function StatusBar() {
+const MODE_LABEL: Record<WorkspaceMode, string> = {
+  plain: '普通文本',
+  json: 'JSON',
+  calc: 'Calc',
+}
+
+interface StatusBarProps {
+  onOpenQuickCommands: () => void
+}
+
+export function StatusBar({ onOpenQuickCommands }: StatusBarProps) {
   const tab = useAppStore(selectActiveTab)
   const doc = useAppStore(selectActiveDoc)
   const summary = useAppStore((state) => state.summary)
   const cursor = useAppStore((state) => state.cursor)
+  const selectionText = useAppStore((state) => state.selectionText)
   const setWorkspaceMode = useAppStore((state) => state.setWorkspaceMode)
-  const setPaletteOpen = useAppStore((state) => state.setPaletteOpen)
   const showToast = useAppStore((state) => state.showToast)
   const [languageOpen, setLanguageOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const mode = tab?.workspace?.mode ?? 'plain'
   const panelCount = tab?.workspace?.panels.length ?? 0
+  const sideTool = tab?.workspace?.sideTool
   const isJson = mode === 'json' && doc
   const hasText = Boolean(doc?.text.trim())
   const error = isJson && summary && !summary.valid && hasText ? summary.issue : null
+  const charCount = doc?.text.length ?? 0
+  const lineCount = doc?.text ? doc.text.split(/\r?\n/).length : 0
 
   useEffect(() => {
     if (!languageOpen) return
@@ -57,63 +71,74 @@ export function StatusBar() {
 
   return (
     <footer className="statusbar tiling-statusbar">
-      <div className="status-language" ref={menuRef}>
-        <button
-          className="seg status-mode"
-          onClick={() => setLanguageOpen((open) => !open)}
-          aria-haspopup="listbox"
-          aria-expanded={languageOpen}
-          title="选择编辑器语言"
-        >
-          {mode.toUpperCase()}
-          <ChevronUp size={10} strokeWidth={2} />
-        </button>
-        {languageOpen ? (
-          <div className="status-language-menu" role="listbox" aria-label="编辑器语言">
-            {([
-              { value: 'plain' as WorkspaceMode, label: 'PLAIN', hint: '纯文本编辑' },
-              { value: 'json' as WorkspaceMode, label: 'JSON', hint: '树形 JSON 编辑' },
-              { value: 'calc' as WorkspaceMode, label: 'CALC', hint: '四则运算 / 变量' },
-            ]).map(({ value, label, hint }) => (
-              <button
-                key={value}
-                className={mode === value ? 'active' : ''}
-                role="option"
-                aria-selected={mode === value}
-                onClick={() => chooseMode(value)}
-              >
-                <span>{label}</span>
-                <span>{hint}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
+      <div className="status-left">
+        <div className="status-language" ref={menuRef}>
+          <button
+            className={`seg status-mode ${mode === 'plain' ? 'is-plain' : 'is-recognized'}`}
+            onClick={() => setLanguageOpen((open) => !open)}
+            aria-haspopup="listbox"
+            aria-expanded={languageOpen}
+            title="选择编辑器语言"
+          >
+            <span className="status-mode-dot" />
+            {MODE_LABEL[mode]}
+            <ChevronDown size={8} strokeWidth={2} />
+          </button>
+          {languageOpen ? (
+            <div className="status-language-menu" role="listbox" aria-label="编辑器语言">
+              {([
+                { value: 'plain' as WorkspaceMode, label: 'PLAIN', hint: '纯文本编辑' },
+                { value: 'json' as WorkspaceMode, label: 'JSON', hint: '树形 JSON 编辑' },
+                { value: 'calc' as WorkspaceMode, label: 'CALC', hint: '四则运算 / 变量' },
+              ]).map(({ value, label, hint }) => (
+                <button
+                  key={value}
+                  className={mode === value ? 'active' : ''}
+                  role="option"
+                  aria-selected={mode === value}
+                  onClick={() => chooseMode(value)}
+                >
+                  <span>{label}</span>
+                  <span>{hint}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <span className="seg status-tool">
+          {panelCount ? `${panelCount} 个面板` : sideTool ? `工具：${TOOL_LABEL[sideTool]}` : '未打开工具'}
+        </span>
       </div>
-      {panelCount ? <span className="seg">{panelCount} 个面板</span> : null}
-      <span className="seg">Ln {cursor.line}, Col {cursor.col}</span>
-      <span className="seg">UTF-8</span>
-      <span className="seg">LF</span>
-      {isJson && hasText ? (
-        error ? (
-          <span className="seg error" title={error.message}>
-            <X size={11} strokeWidth={2} />
-            语法错误{error.line ? ` · 行 ${error.line}` : ''}
-          </span>
-        ) : (
-          <span className="seg">
-            <Check size={11} strokeWidth={2} color="var(--success)" />
-            有效 JSON
-          </span>
-        )
-      ) : null}
+
+      <div className="status-center">
+        <span className="seg status-position">行 {cursor.line}，列 {cursor.col}</span>
+        <span className="seg">选区 {selectionText.length}</span>
+        <span className="seg">{charCount} 字符{lineCount ? `，${lineCount} 行` : ''}</span>
+      </div>
+
       <div className="right">
-        <button className="seg status-action" onClick={openSearch} title="打开编辑器查找">
+        {isJson && hasText ? (
+          error ? (
+            <span className="seg error" title={error.message}>
+              <X size={10} strokeWidth={2} />
+              语法错误{error.line ? ` · 行 ${error.line}` : ''}
+            </span>
+          ) : (
+            <span className="seg status-valid">
+              <Check size={10} strokeWidth={2} />
+              有效 JSON
+            </span>
+          )
+        ) : (
+          <span className="seg status-idle"><span className="status-mode-dot" />空闲</span>
+        )}
+        <button className="seg status-action status-search" onClick={openSearch} title="打开编辑器查找">
           {modKey('F')} 搜索
         </button>
-        <button className="seg status-action" onClick={() => setPaletteOpen(true)} title="打开命令面板">
-          {modKey('⇧P')} 命令
+        <button className="seg status-action status-quick-command" onClick={onOpenQuickCommands} title="打开快捷命令">
+          {modKey('⇧P')} 快捷命令
         </button>
-        <span className="seg">v{APP_VERSION}</span>
+        <span className="seg status-version">v{APP_VERSION}</span>
       </div>
     </footer>
   )

@@ -93,3 +93,10 @@ created by Ethan Schoonover.
 
 Solarized is distributed under the MIT License.
 https://github.com/altercation/solarized
+
+## Mermaid
+
+Mermaid diagram rendering uses the Mermaid library.
+
+MIT License. Copyright (c) 2014-2026 Knut Sveidqvist and contributors.
+https://github.com/mermaid-js/mermaid
