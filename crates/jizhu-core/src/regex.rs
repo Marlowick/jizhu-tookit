@@ -68,7 +68,7 @@ fn failure(message: impl Into<String>, kind: &str, started: Instant) -> RegexOut
     }
 }
 
-fn capture_groups(captures: &Captures<'_>) -> Vec<Option<String>> {
+fn capture_groups(captures: &Captures<'_, str>) -> Vec<Option<String>> {
     (1..captures.len())
         .map(|index| captures.get(index).map(|group| group.as_str().to_string()))
         .collect()

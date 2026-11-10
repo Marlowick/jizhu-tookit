@@ -389,7 +389,6 @@ export function PlainEditor({ text, docId, calc = false, mermaid = false, highli
           <span>粘贴大量内容时将自动识别 JSON 与 Mermaid</span>
           <div className="empty-editor-shortcuts">
             <kbd>⌘K 命令面板</kbd>
-            <kbd>⌘⇧P 快捷命令</kbd>
           </div>
         </div>
       ) : null}

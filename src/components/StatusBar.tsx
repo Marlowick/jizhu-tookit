@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, X } from 'lucide-react'
-import { requestEditorSearch } from '../core/editorActions'
-import { modKey } from '../core/keyboard'
 import { TOOL_LABEL } from '../core/tools'
 import { APP_VERSION } from '../core/version'
 import type { WorkspaceMode } from '../core/types'
@@ -13,18 +11,13 @@ const MODE_LABEL: Record<WorkspaceMode, string> = {
   calc: 'Calc',
 }
 
-interface StatusBarProps {
-  onOpenQuickCommands: () => void
-}
-
-export function StatusBar({ onOpenQuickCommands }: StatusBarProps) {
+export function StatusBar() {
   const tab = useAppStore(selectActiveTab)
   const doc = useAppStore(selectActiveDoc)
   const summary = useAppStore((state) => state.summary)
   const cursor = useAppStore((state) => state.cursor)
   const selectionText = useAppStore((state) => state.selectionText)
   const setWorkspaceMode = useAppStore((state) => state.setWorkspaceMode)
-  const showToast = useAppStore((state) => state.showToast)
   const [languageOpen, setLanguageOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const mode = tab?.workspace?.mode ?? 'plain'
@@ -59,14 +52,6 @@ export function StatusBar({ onOpenQuickCommands }: StatusBarProps) {
   const chooseMode = (next: WorkspaceMode) => {
     if (tab) setWorkspaceMode(tab.id, next)
     setLanguageOpen(false)
-  }
-
-  const openSearch = () => {
-    if (panelCount > 0) {
-      showToast('先关闭普通面板，再在编辑器中搜索')
-      return
-    }
-    requestEditorSearch()
   }
 
   return (
@@ -132,12 +117,6 @@ export function StatusBar({ onOpenQuickCommands }: StatusBarProps) {
         ) : (
           <span className="seg status-idle"><span className="status-mode-dot" />空闲</span>
         )}
-        <button className="seg status-action status-search" onClick={openSearch} title="打开编辑器查找">
-          {modKey('F')} 搜索
-        </button>
-        <button className="seg status-action status-quick-command" onClick={onOpenQuickCommands} title="打开快捷命令">
-          {modKey('⇧P')} 快捷命令
-        </button>
         <span className="seg status-version">v{APP_VERSION}</span>
       </div>
     </footer>

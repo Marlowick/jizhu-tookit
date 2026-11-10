@@ -209,7 +209,7 @@ const scenarios = [
     await page.waitForTimeout(700)
   }],
   ['05-command-palette.png', async (page) => {
-    await page.keyboard.press('Meta+Shift+P')
+    await page.keyboard.press('Meta+k')
     await page.waitForTimeout(250)
   }],
   ['06-mode-picker.png', async (page) => {

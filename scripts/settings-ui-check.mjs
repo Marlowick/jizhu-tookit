@@ -35,7 +35,6 @@ assert.equal(
   false,
 )
 await page.locator('.titlebar-command').click()
-await page.keyboard.press('/')
 await page.locator('.palette-search input').fill('格式化 JSON')
 await page.locator('.palette-item').first().click()
 await page.waitForTimeout(500)

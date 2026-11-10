@@ -38,10 +38,12 @@ This repository is **source-only**:
   - UTF-8 and LF displayed in the status bar; word wrap is on by default and toggleable from the command palette.
   - No file open/save in this milestone — content is typed/pasted and restored locally.
   - Pasting into a blank editor (new workspace or after clearing) detects JSON object/array and switches to JSON; any other paste switches to Plain.
-- **Quick commands / command palette** (`⌘⇧P`)
+- **Command palette** (`⌘K`)
   - Opens as a single-key command list without focusing an input, so Chinese IMEs do not slow it down.
-  - Press `S` settings, `V` mode, `F` format JSON, `M` minify, `G` Mermaid, `J` jq, `D` Diff, `R` Regex, and so on; the key is shown beside each command.
-  - Press `/` to switch to the searchable list; every command has an English alias (e.g. `settings` finds 设置).
+  - Every command has an English alias (e.g. `settings` finds 设置).
+  - Commands are counted in local storage; the most-used commands appear in a `Frequent` group at the top.
+  - Unavailable commands such as Format JSON in Plain mode remain visible, with the reason shown in the row.
+  - The top-right titlebar contains the command palette (`⌘K`) and settings; `⌘F` remains an editor shortcut.
 - **Input sources**
   - Only Diff keeps a source selector: selected text, current workspace tab, or manual input.
   - QR / URL / Encode-decode / Time / jq / Regex / Pipeline / Data format / cURL read the left editor directly and have no separate input field.
@@ -60,7 +62,7 @@ This repository is **source-only**:
   - Pipeline uses the left editor as its only input; its right pane has numbered step rows on top and results below, with inline step configuration. jq/codec/regex/count steps and workflow import/export remains; exported workflow JSON contains only version/name/steps, never editor data.
   - QR preview supports copy/zoom; file export is intentionally not exposed in this milestone.
 - **Settings**: Ghostty / Light / Solarized theme, editor font size, interface scale, JSON indent, language, shortcuts, about. Wrap defaults on. Open it from the command palette; `⌘,` is no longer bound.
-  - The bottom status bar is interactive: click `PLAIN`/`JSON`/`CALC` to switch the editor language; click `⌘F 搜索` to open the editor find bar; click `⌘⇧P 命令` to open the command palette.
+  - The bottom status bar shows mode, selection, counts, JSON validity and version. Use `⌘F` for editor find and the top-right `⌘K` button for commands.
 - **Calc mode (MVP)**: four-operator arithmetic, precedence/parentheses, one independent expression per line, and inline results at line end. Evaluation is debounced by 400ms; existing answers stay visible while typing and are only rebuilt when the calculated data actually changes. Variables (`price = 100`, `price * 2`) are substituted in the answer, e.g. `2 * 8 = 16`; a line containing only a variable shows its value. Built-ins: `abs, sqrt, round, floor, ceil, min, max, pow, mod, log` (base 10), `ln, exp, sin, cos, tan` (radians), `sum`, `datetime(timestamp)` / `timestamp(timestamp)` for readable local time, plus constants `pi` and `e`. A Calc help card appears for empty documents with examples and a fill button. Syntax, undefined-variable and division-by-zero errors stay inline; prose lines are ignored.
 - **Theme**: Light default, plus Ghostty Dark, Solarized Light and Solarized Dark, mapped to UI surfaces and syntax highlighting. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **Security**: strict CSP, `withGlobalTauri: false`, no fs/shell/http plugins, jaq/regex sandboxed in worker subprocesses. jq no longer invokes a system `jq` binary. The cURL tool invokes the fixed system `/usr/bin/curl` binary with argument arrays (no shell interpolation) and only after an explicit user action.
@@ -70,7 +72,7 @@ This repository is **source-only**:
 
 | Shortcut | Action |
 | --- | --- |
-| `⌘⇧P` | Quick command list; `/` searches |
+| `⌘K` | Command palette |
 | `⌘F` | Find / replace in editor |
 | `⌘Z` / `⌘⇧Z` / `Ctrl+Z` | Undo / redo |
 | `Tab` / `Shift+Tab` | Indent / outdent |

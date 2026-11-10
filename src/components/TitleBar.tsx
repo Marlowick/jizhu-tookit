@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Search, Settings } from 'lucide-react'
+import { Command, Settings } from 'lucide-react'
+import { modKey } from '../core/keyboard'
 
 interface TitleBarProps {
   showMockTraffic: boolean
@@ -22,10 +23,15 @@ export function TitleBar({ showMockTraffic, onOpenPalette, onOpenSettings, child
         {children}
       </div>
       <div className="titlebar-actions">
-        <button className="titlebar-command" onClick={onOpenPalette} title="打开命令面板" aria-label="打开命令面板">
-          <Search size={11} strokeWidth={1.8} />
+        <button
+          className="titlebar-command"
+          onClick={onOpenPalette}
+          title={`打开命令面板（${modKey('K')}）`}
+          aria-label="打开命令面板"
+        >
+          <Command size={11} strokeWidth={1.8} />
           <span>命令面板</span>
-          <kbd>⌘K</kbd>
+          <kbd>{modKey('K')}</kbd>
         </button>
         <button className="titlebar-settings" onClick={onOpenSettings} title="设置" aria-label="设置">
           <Settings size={14} strokeWidth={1.7} />

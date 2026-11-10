@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — Mermaid preview & quick commands · 2026-11-08
+## 1.1.0 — Mermaid preview & command palette · 2026-11-08
 
 ### Added
 
@@ -19,8 +19,9 @@
 - Clearing a document and pasting JSON auto-switches to JSON; pasting non-JSON switches to Plain.
 - Calc adds `datetime(timestamp)` / `timestamp(timestamp)` readable local-time results.
 - Light theme is now the default; the titlebar has direct command/settings entries and the status bar shows mode, selection, character/line counts and active tool.
-- Added a bottom-right ⌘⇧P quick command grid with no focused input; ⌘K opens the searchable palette.
 - Added local-only fonts and removed remote font imports to preserve offline behavior and CSP.
+- Command palette (`⌘K`) is the only top-right command entry; `⌘F` remains an editor shortcut.
+- Persisted command usage and promoted the most-used commands into a `Frequent` group in the command palette. Unavailable commands remain visible with a disabled reason (e.g. Format JSON outside JSON mode).
 
 ## 1.0.0 — Tiling workspace · 2026-11-02
 

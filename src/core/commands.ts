@@ -7,8 +7,8 @@ export interface CommandItem {
   keywords?: string[]
   group: string
   hint?: string
-  /** Single-key mnemonic used by the quick command list. */
-  quickKey?: string
+  disabled?: boolean
+  disabledReason?: string
   description?: string
   icon?: LucideIcon
   run: () => void

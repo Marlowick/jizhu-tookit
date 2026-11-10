@@ -72,7 +72,7 @@ function createWorkspace(index: number): { tab: Tab; doc: Doc } {
 
 const initialWorkspace = createWorkspace(1)
 
-type PersistedState = Pick<AppState, 'docs' | 'tabs' | 'activeTabId' | 'splitRatio' | 'settings'>
+type PersistedState = Pick<AppState, 'docs' | 'tabs' | 'activeTabId' | 'splitRatio' | 'settings' | 'commandUsage'>
 
 interface AppState {
   docs: Record<string, Doc>
@@ -85,6 +85,7 @@ interface AppState {
   cursor: Cursor
   summary: AnalysisSummary | null
   settings: AppSettings
+  commandUsage: Record<string, number>
   settingsOpen: boolean
   toast: string | null
 
@@ -121,6 +122,7 @@ interface AppState {
   setPipeline: (tabId: string, state: PipelineState) => void
   updateSettings: (patch: Partial<AppSettings>) => void
   setSettingsOpen: (open: boolean) => void
+  recordCommandUse: (id: string) => void
   showToast: (message: string) => void
 }
 
@@ -187,6 +189,7 @@ export const useAppStore = create<AppState>()(
       cursor: { line: 1, col: 1, pos: 0 },
       summary: null,
       settings: DEFAULT_SETTINGS,
+      commandUsage: {},
       settingsOpen: false,
       toast: null,
 
@@ -321,6 +324,14 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ settings: { ...state.settings, ...patch } })),
 
       setSettingsOpen: (open) => set({ settingsOpen: open }),
+
+      recordCommandUse: (id) =>
+        set((state) => ({
+          commandUsage: {
+            ...state.commandUsage,
+            [id]: Math.min(9999, (state.commandUsage[id] ?? 0) + 1),
+          },
+        })),
 
       newWorkspace: () =>
         set((state) => {
@@ -568,6 +579,7 @@ export const useAppStore = create<AppState>()(
         activeTabId: state.activeTabId,
         splitRatio: state.splitRatio,
         settings: state.settings,
+        commandUsage: state.commandUsage,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AppState>
@@ -613,6 +625,11 @@ export const useAppStore = create<AppState>()(
             theme: normalizeTheme(saved.settings?.theme),
             uiScale: clampUiScale(saved.settings?.uiScale ?? DEFAULT_SETTINGS.uiScale),
           },
+          commandUsage: Object.fromEntries(
+            Object.entries(saved.commandUsage ?? {})
+              .filter(([id, count]) => typeof id === 'string' && typeof count === 'number' && count > 0)
+              .map(([id, count]) => [id, Math.min(9999, Math.floor(count))]),
+          ),
           paletteOpen: false,
           settingsOpen: false,
           summary: null,

@@ -16,7 +16,6 @@ const TABS: Array<{ id: SettingsTab; icon: typeof Settings }> = [
 
 const SHORTCUTS: Array<[string, string]> = [
   [modKey('K'), 'settings.shortcut.palette'],
-  [modKey('⇧P'), 'settings.shortcut.quickCommand'],
   [modKey('F'), 'settings.shortcut.search'],
   [modKey('Z'), 'settings.shortcut.undo'],
   [modKey('⇧Z'), 'settings.shortcut.redo'],

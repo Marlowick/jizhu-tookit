@@ -16,6 +16,7 @@ try {
   assert.equal(Math.round(await page.locator('.titlebar').evaluate((node) => node.getBoundingClientRect().height)), 40)
   assert.equal(Math.round(await page.locator('.statusbar').evaluate((node) => node.getBoundingClientRect().height)), 28)
   assert.equal(await page.locator('.titlebar-command').count(), 1)
+  assert.equal(await page.locator('.titlebar-find, .titlebar-quick').count(), 0)
   assert.equal(await page.locator('.titlebar-settings').count(), 1)
   assert.equal(await page.locator('.tiling-tab .tab-mode-icon').count(), 1)
   assert.equal(await page.locator('.empty-editor-guide').count(), 1)
@@ -39,18 +40,7 @@ try {
 
   await page.keyboard.press('Meta+Shift+P')
   await page.waitForTimeout(100)
-  assert.equal(await page.locator('.palette-quick').count(), 1)
-  assert.equal(await page.locator('.palette-search').count(), 0)
-  assert.equal(await page.locator('.quick-command-header').innerText(), '快捷命令\nEsc 取消')
-  assert.equal(Math.round(await page.locator('.palette-quick').evaluate((node) => node.getBoundingClientRect().width)), 460)
-  assert.equal(Math.round(await page.locator('.palette-quick').evaluate((node) => node.getBoundingClientRect().right)), 1392)
-  assert.equal(Math.round(await page.locator('.palette-quick').evaluate((node) => node.getBoundingClientRect().bottom)), 976)
-  assert.equal(await page.locator('.quick-command-grid').evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length), 2)
-  await page.keyboard.press('/')
-  await page.waitForTimeout(100)
-  assert.equal(await page.locator('.palette-quick').count(), 0)
-  assert.equal(await page.locator('.palette-search input').count(), 1)
-  await page.keyboard.press('Escape')
+  assert.equal(await page.locator('.palette').count(), 0)
 
   await page.locator('.titlebar-settings').click()
   await page.waitForTimeout(100)
@@ -65,7 +55,6 @@ try {
   assert.match(await page.locator('.statusbar').innerText(), /5 字符/)
 
   await page.keyboard.press('Meta+k')
-  await page.keyboard.press('/')
   await page.locator('.palette-search input').fill('Mermaid 预览')
   await page.locator('.palette-item').first().click()
   await page.waitForTimeout(300)
@@ -92,7 +81,6 @@ try {
   await page.getByRole('button', { name: '关闭Mermaid 预览', exact: true }).click()
 
   await page.keyboard.press('Meta+k')
-  await page.keyboard.press('/')
   await page.locator('.palette-search input').fill('二维码')
   await page.locator('.palette-item').first().click()
   await page.waitForTimeout(400)

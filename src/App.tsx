@@ -24,7 +24,7 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
-import { CommandPalette, type PaletteMode } from './components/CommandPalette'
+import { CommandPalette } from './components/CommandPalette'
 import { ModePicker } from './components/ModePicker'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StatusBar } from './components/StatusBar'
@@ -41,27 +41,13 @@ import {
   minifyJson,
 } from './core/ipc'
 import { isModPressed, modKey } from './core/keyboard'
-import { clampUiScale, UI_SCALE_STEP } from './core/uiScale'
+import { clampUiScale, UI_SCALE_MAX, UI_SCALE_MIN, UI_SCALE_STEP } from './core/uiScale'
 import type { WorkspacePanelType } from './core/types'
 import {
   selectActiveDoc,
   selectActiveTab,
   useAppStore,
 } from './store/appStore'
-
-const QUICK_PANEL_KEYS: Record<WorkspacePanelType, string> = {
-  jq: 'j',
-  diff: 'd',
-  qr: 'q',
-  pipeline: 'p',
-  url: 'l',
-  time: 't',
-  regex: 'r',
-  codec: 'e',
-  data: 'x',
-  curl: 'k',
-  mermaid: 'g',
-}
 
 const PANELS: Array<{
   type: WorkspacePanelType
@@ -103,6 +89,7 @@ export default function App() {
   const activeTab = useAppStore(selectActiveTab)
   const activeDoc = useAppStore(selectActiveDoc)
   const settings = useAppStore((state) => state.settings)
+  const summary = useAppStore((state) => state.summary)
   const paletteOpen = useAppStore((state) => state.paletteOpen)
   const settingsOpen = useAppStore((state) => state.settingsOpen)
   const toast = useAppStore((state) => state.toast)
@@ -121,7 +108,6 @@ export default function App() {
   const closeTab = useAppStore((state) => state.closeTab)
 
   const workspace = activeTab?.workspace
-  const [paletteMode, setPaletteMode] = useState<PaletteMode>('search')
   const [modePickerOpen, setModePickerOpen] = useState(false)
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
 
@@ -253,17 +239,9 @@ export default function App() {
       const mod = isModPressed(event)
       const key = event.key.toLowerCase()
 
-      if (mod && event.shiftKey && !event.altKey && key === 'p') {
-        event.preventDefault()
-        if (!paletteOpen || paletteMode !== 'quick') setPaletteMode('quick')
-        setPaletteOpen(paletteMode === 'quick' ? !paletteOpen : true)
-        return
-      }
-
       if (mod && !event.shiftKey && !event.altKey && key === 'k') {
         event.preventDefault()
-        if (!paletteOpen || paletteMode !== 'search') setPaletteMode('search')
-        setPaletteOpen(paletteMode === 'search' ? !paletteOpen : true)
+        setPaletteOpen(!paletteOpen)
         return
       }
 
@@ -321,6 +299,21 @@ export default function App() {
     const items: CommandItem[] = []
     if (!activeTab || !workspace) return items
 
+    const modeName = workspace.mode === 'json' ? 'JSON' : workspace.mode === 'calc' ? 'Calc' : 'Plain'
+    const hasText = Boolean(activeDoc?.text.trim())
+    const jsonDisabledReason =
+      workspace.mode !== 'json'
+        ? `仅适用于 JSON 模式（当前为 ${modeName}）`
+        : !hasText
+          ? '当前文档为空'
+          : summary && !summary.valid
+            ? '当前内容不是有效 JSON，请先修复语法'
+            : undefined
+    const copyDisabledReason = hasText ? undefined : '当前文档为空'
+    const zoomInDisabledReason = settings.uiScale >= UI_SCALE_MAX ? `已达到最大缩放 ${Math.round(UI_SCALE_MAX * 100)}%` : undefined
+    const zoomOutDisabledReason = settings.uiScale <= UI_SCALE_MIN ? `已达到最小缩放 ${Math.round(UI_SCALE_MIN * 100)}%` : undefined
+    const zoomResetDisabledReason = settings.uiScale === 1 ? '当前已经是 100%' : undefined
+
     for (const panel of PANELS) {
       items.push({
         id: `panel-${panel.type}`,
@@ -330,7 +323,6 @@ export default function App() {
         description: panel.description,
         group: '面板 · 弹窗',
         hint: ['qr', 'url', 'codec', 'time', 'jq', 'regex', 'pipeline', 'data', 'curl', 'mermaid'].includes(panel.type) ? '分屏 · 单例' : '平铺',
-        quickKey: QUICK_PANEL_KEYS[panel.type],
         icon: panel.icon,
         run: () => openWorkspacePanel(activeTab.id, panel.type),
       })
@@ -344,7 +336,6 @@ export default function App() {
         description: '撤销当前编辑器的上一步操作',
         group: '编辑',
         hint: '⌘Z',
-        quickKey: 'u',
         icon: Undo2,
         run: requestEditorUndo,
       },
@@ -356,7 +347,6 @@ export default function App() {
         description: '作用于 plain / JSON / Calc 编辑器；默认开启',
         group: '编辑',
         hint: settings.wordWrap ? 'Wrap 开' : 'Wrap 关',
-        quickKey: 'w',
         icon: WrapText,
         run: () => {
           updateSettings({ wordWrap: !settings.wordWrap })
@@ -370,7 +360,6 @@ export default function App() {
         keywords: ['plain', 'json', 'calc', 'editor', 'language'],
         description: '选择 Plain / JSON / Calc 编辑器模式',
         group: '编辑',
-        quickKey: 'v',
         icon: AlignJustify,
         run: () => setModePickerOpen(true),
       },
@@ -381,7 +370,6 @@ export default function App() {
         keywords: ['settings', 'preferences', 'options', 'shortcuts'],
         description: '编辑器字号、自动换行、快捷键与关于',
         group: '全局',
-        quickKey: 's',
         icon: Settings,
         run: () => setSettingsOpen(true),
       },
@@ -393,7 +381,6 @@ export default function App() {
         description: '创建一个新的空白编辑工作区',
         group: '全局',
         hint: '+',
-        quickKey: 'n',
         icon: Plus,
         run: newWorkspace,
       },
@@ -405,6 +392,8 @@ export default function App() {
         description: `当前 ${Math.round(settings.uiScale * 100)}%，按 10% 放大`,
         group: '全局',
         hint: modKey('='),
+        disabled: Boolean(zoomInDisabledReason),
+        disabledReason: zoomInDisabledReason,
         icon: ZoomIn,
         run: () => scaleBy(UI_SCALE_STEP),
       },
@@ -416,6 +405,8 @@ export default function App() {
         description: `当前 ${Math.round(settings.uiScale * 100)}%，按 10% 缩小`,
         group: '全局',
         hint: modKey('-'),
+        disabled: Boolean(zoomOutDisabledReason),
+        disabledReason: zoomOutDisabledReason,
         icon: ZoomOut,
         run: () => scaleBy(-UI_SCALE_STEP),
       },
@@ -427,51 +418,54 @@ export default function App() {
         description: '恢复到 100%',
         group: '全局',
         hint: modKey('0'),
+        disabled: Boolean(zoomResetDisabledReason),
+        disabledReason: zoomResetDisabledReason,
         icon: RotateCcw,
         run: resetUiScale,
       },
     )
 
-    if (workspace.mode === 'json' && activeDoc) {
-      items.push(
-        {
-          id: 'format-json',
-          title: '格式化 JSON',
-          english: 'Format JSON',
-          keywords: ['format', 'json', 'pretty'],
-          description: '按设置中的缩进格式化当前文档',
-          group: '编辑',
-          hint: 'JSON',
-          quickKey: 'f',
-          icon: AlignJustify,
-          run: () => void handleFormat(),
-        },
-        {
-          id: 'minify-json',
-          title: '压缩 JSON',
-          english: 'Minify JSON',
-          keywords: ['minify', 'json', 'compact'],
-          description: '压缩为单行 JSON',
-          group: '编辑',
-          hint: 'JSON',
-          quickKey: 'm',
-          icon: Minimize2,
-          run: () => void handleMinify(),
-        },
-        {
-          id: 'copy-doc',
-          title: '复制当前文本',
-          english: 'Copy text',
-          keywords: ['copy', 'clipboard'],
-          description: '把编辑器内容复制到剪贴板',
-          group: '编辑',
-          hint: '剪贴板',
-          quickKey: 'c',
-          icon: Copy,
-          run: () => void handleCopy(),
-        },
-      )
-    }
+    items.push(
+      {
+        id: 'format-json',
+        title: '格式化 JSON',
+        english: 'Format JSON',
+        keywords: ['format', 'json', 'pretty'],
+        description: '按设置中的缩进格式化当前文档',
+        group: '编辑',
+        hint: 'JSON',
+        disabled: Boolean(jsonDisabledReason),
+        disabledReason: jsonDisabledReason,
+        icon: AlignJustify,
+        run: () => void handleFormat(),
+      },
+      {
+        id: 'minify-json',
+        title: '压缩 JSON',
+        english: 'Minify JSON',
+        keywords: ['minify', 'json', 'compact'],
+        description: '压缩为单行 JSON',
+        group: '编辑',
+        hint: 'JSON',
+        disabled: Boolean(jsonDisabledReason),
+        disabledReason: jsonDisabledReason,
+        icon: Minimize2,
+        run: () => void handleMinify(),
+      },
+      {
+        id: 'copy-doc',
+        title: '复制当前文本',
+        english: 'Copy text',
+        keywords: ['copy', 'clipboard'],
+        description: '把编辑器内容复制到剪贴板',
+        group: '编辑',
+        hint: '剪贴板',
+        disabled: Boolean(copyDisabledReason),
+        disabledReason: copyDisabledReason,
+        icon: Copy,
+        run: () => void handleCopy(),
+      },
+    )
 
     return items
   }, [
@@ -488,6 +482,7 @@ export default function App() {
     setWorkspaceMode,
     settings.uiScale,
     settings.wordWrap,
+    summary,
     showToast,
     updateSettings,
     workspace,
@@ -499,10 +494,7 @@ export default function App() {
     <div className="app tiling-app">
       <TitleBar
         showMockTraffic={!isTauri}
-        onOpenPalette={() => {
-          setPaletteMode('search')
-          setPaletteOpen(true)
-        }}
+        onOpenPalette={() => setPaletteOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       >
         <TabBar onNewTab={newWorkspace} />
@@ -510,14 +502,9 @@ export default function App() {
       <main className="workspace tiling-workspace">
         <WorkspaceView tab={activeTab} doc={activeDoc} />
       </main>
-      <StatusBar
-        onOpenQuickCommands={() => {
-          setPaletteMode('quick')
-          setPaletteOpen(true)
-        }}
-      />
+      <StatusBar />
       {paletteOpen ? (
-        <CommandPalette initialMode={paletteMode} items={commands} onClose={() => setPaletteOpen(false)} />
+        <CommandPalette items={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}
       {settingsOpen ? <SettingsDialog /> : null}
       {modePickerOpen ? (
