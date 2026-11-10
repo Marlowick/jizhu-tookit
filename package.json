@@ -22,7 +22,7 @@
     "@lezer/highlight": "^1.2.5",
     "@tanstack/react-virtual": "^3.14.26",
     "@tauri-apps/api": "^2.12.4",
-    "lucide-react": "^1.69.0",
+    "lucide-react": "^1.70.0",
     "mermaid": "^12.3.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
