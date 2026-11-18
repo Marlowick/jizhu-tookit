@@ -6,6 +6,7 @@ import {
   StateEffect,
   StateField,
   type Extension,
+  type Text,
 } from '@codemirror/state'
 import {
   Decoration,
@@ -163,10 +164,17 @@ function sameCalcResults(left: CalcLineResult[], right: CalcLineResult[]): boole
   })
 }
 
-function calcDecorations(results: CalcLineResult[]): DecorationSet {
-  const widgets = results.map((result) =>
-    Decoration.widget({ widget: new CalcResultWidget(result), side: 1 }).range(result.to),
-  )
+function calcDecorations(results: CalcLineResult[], doc: Text): DecorationSet {
+  // Anchor widgets to the live end of their line instead of a stale absolute
+  // offset. Otherwise pressing Enter at the end of a line maps the widget past
+  // the newline and the answer drifts onto the wrong line.
+  const widgets = results.flatMap((result) => {
+    const lineNumber = result.line + 1
+    if (lineNumber > doc.lines) return []
+    const line = doc.line(lineNumber)
+    const end = line.from + line.text.trimEnd().length
+    return [Decoration.widget({ widget: new CalcResultWidget(result), side: 1 }).range(end)]
+  })
   return Decoration.set(widgets, true)
 }
 
@@ -335,10 +343,12 @@ export function PlainEditor({ text, docId, calc = false, mermaid = false, highli
   }, [calc, text])
 
   useEffect(() => {
-    viewRef.current?.dispatch({
-      effects: setCalcDecorations.of(calc ? calcDecorations(calcResults) : Decoration.none),
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: setCalcDecorations.of(calc ? calcDecorations(calcResults, view.state.doc) : Decoration.none),
     })
-  }, [calc, calcResults])
+  }, [calc, calcResults, text])
 
   useEffect(() => {
     if (!highlights || highlights.current == null) return

@@ -14,43 +14,31 @@ page.on('console', (message) => {
 })
 
 await page.goto('http://127.0.0.1:1420/', { waitUntil: 'networkidle' })
-await page.locator('.titlebar-settings').click()
-await page.waitForTimeout(200)
-await page.locator('.settings-row select').first().selectOption('ghostty')
-await page.waitForTimeout(250)
+await page.waitForTimeout(300)
+
 assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
+assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'sublime')
 assert.equal(
   await page.locator('.app').evaluate((element) => getComputedStyle(element).backgroundColor),
-  'rgb(40, 44, 52)',
+  'rgb(39, 40, 34)',
 )
-await page.screenshot({ path: '/tmp/jizhu-dark-settings.png' })
+console.log('• Sublime dark is the only theme')
+
+await page.locator('.titlebar-settings').click()
+await page.waitForTimeout(250)
+assert.equal(await page.locator('.settings-dialog').count(), 1)
+assert.equal(await page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).count(), 0)
 await page.getByRole('button', { name: '关闭', exact: true }).last().click()
-await page.locator('.status-mode').click()
-await page.getByRole('option', { name: /JSON/ }).click()
-await page.locator('.cm-content').click()
-await page.keyboard.insertText('{"dark":true}')
-await page.waitForTimeout(500)
-await page.screenshot({ path: '/tmp/jizhu-dark-json.png' })
-assert.equal(
-  await page.locator('.cm-editor').evaluate((element) => getComputedStyle(element).color),
-  'rgb(255, 255, 255)',
-)
-console.log('• Ghostty theme applies to shell and editor')
 
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(300)
 assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
-console.log('• theme persists across reload')
-
-await page.locator('.titlebar-settings').click()
-await page.locator('.settings-row select').first().selectOption('solarized-light')
-await page.waitForTimeout(250)
-assert.equal(await page.locator('html').getAttribute('data-theme'), 'light')
-assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'solarized-light')
-await page.locator('.settings-row select').first().selectOption('light')
-await page.waitForTimeout(250)
-assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'light')
-console.log('• Solarized and design light modes switch ok')
+assert.equal(await page.locator('html').getAttribute('data-theme-variant'), 'sublime')
+assert.equal(
+  await page.locator('.app').evaluate((element) => getComputedStyle(element).backgroundColor),
+  'rgb(39, 40, 34)',
+)
+console.log('• theme is stable across reload')
 
 await browser.close()
 if (errors.length) {

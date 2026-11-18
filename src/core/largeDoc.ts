@@ -26,9 +26,3 @@ export function analysisPlan(mode: DocMode): AnalysisPlan {
       return { mode, debounceMs: 180, maxNodes: undefined }
   }
 }
-
-export function formatCharCount(length: number): string {
-  if (length >= 1_000_000) return `${(length / 1_000_000).toFixed(1)}M 字符`
-  if (length >= 1_000) return `${Math.round(length / 1_000)}K 字符`
-  return `${length} 字符`
-}

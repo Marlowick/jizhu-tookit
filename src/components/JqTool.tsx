@@ -7,6 +7,7 @@ import { SAMPLE_JQ_EXPR, SAMPLE_JSONL } from '../core/sample'
 import type { JqOutcome, Tab } from '../core/types'
 import { useAppStore } from '../store/appStore'
 import { JqSyntaxHelp } from './JqSyntaxHelp'
+import { JsonHighlight } from './JsonHighlight'
 
 interface JqToolProps {
   tab: Tab
@@ -202,7 +203,7 @@ export function JqTool({ tab, embedded = false, source, onSourceChange }: JqTool
               <pre>{result.error.message}</pre>
             </div>
           ) : result ? (
-            <pre className="jq-output">{result.output || '（无输出）'}</pre>
+            <JsonHighlight className="jq-output" text={result.output} emptyText="（无输出）" />
           ) : (
             <div className="jq-empty">输入 JSON Lines 和表达式后运行</div>
           )}

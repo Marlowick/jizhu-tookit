@@ -2,6 +2,19 @@
 
 ## 1.1.0 — Mermaid preview & command palette · 2026-11-08
 
+### Changed
+
+- Removed the Light, Ghostty Dark and Solarized themes; the app now ships a single Sublime Dark theme, and the theme picker was removed from Settings.
+- Mermaid preview now keeps its SVG pinned to the viewBox and fits it inside the pane when interface zoom changes, preventing right-edge clipping.
+
+### Added
+
+- Added `⌘N` to create a new numbered workspace.
+- Added a right-side `⌘L` quick-action menu: `f` formats JSON; `m` switches the menu to `j` JSON, `p` Plain and `c` Calc, with disabled formatting reasons.
+
+
+- Removed the JSON synchronized tree view; JSON mode is now a full-width editor with folding and syntax highlighting.
+
 ### Added
 
 - Interface zoom: ⌘= / ⌘- in 10% steps, ⌘0 resets to 100%, persisted in settings.
@@ -12,7 +25,15 @@
 - Added Mermaid preview side tool: local SVG rendering, debounced updates, theme-aware colors, zoom/reset, copy SVG, sample, and error display. The plain editor gains Mermaid syntax highlighting while the tool is open. Added a scrollable 28-diagram example library split into Basic and Real-world groups; selecting an example switches the editor back to Plain mode.
 - Command palette now opens as a Helix-style single-key quick list with no focused input (IME-safe); press `/` for the searchable palette.
 - Production bundle is code-split: tools/panels load lazily, with separate React, CodeMirror, data-format, QR and icon chunks; the >500 kB warning is gone.
-- Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line/tree accents, and thinner scrollbars.
+- Sublime-inspired flat UI: square tabs and controls, 1px separators, flat command palette/modals, compact 32px tool headers, active-line accents, and thinner scrollbars.
+- Added a Sublime Dark theme (flat 3b3b3b chrome, 272822 editor, Monokai syntax) and made it the default; Light, Ghostty Dark and Solarized themes remain available.
+- The Sublime title/tab strip is 32px tall so tabs sit lower than before.
+- Restored a dedicated `+` new-tab button after the tabs and always-visible per-tab close `×` buttons.
+- Calc answers are now anchored to the live end of their line, so pressing Enter no longer moves a result onto a later blank line.
+- Sublime side-tool bodies (including Mermaid preview) now share the editor surface color, removing the visible left/right background seam.
+- JSON editor right-click copies the jq path for the clicked node, including quoted keys and array indexes.
+- jq results now render with the editor's JSON syntax palette (keys, strings, numbers, booleans, punctuation), shared through a read-only highlighter.
+- Sublime tabs are adjacent with a single 1px separator (previously a 6px flex gap plus border looked like a double divider).
 - Fixed low-contrast text selection in light themes by forcing the CodeMirror selection layer to the active `--cm-selection` token.
 - Added Ghostty Dark, Solarized Light and Solarized Dark themes.
 - JSON editor now has a fold gutter, fold placeholders and CodeMirror fold keybindings.
@@ -21,6 +42,7 @@
 - Light theme is now the default; the titlebar has direct command/settings entries and the status bar shows mode, selection, character/line counts and active tool.
 - Added local-only fonts and removed remote font imports to preserve offline behavior and CSP.
 - Command palette (`⌘K`) is the only top-right command entry; `⌘F` remains an editor shortcut.
+- URL query-parameter copy/delete actions now have visible 30px hit targets and aria labels.
 - Persisted command usage and promoted the most-used commands into a `Frequent` group in the command palette. Unavailable commands remain visible with a disabled reason (e.g. Format JSON outside JSON mode).
 
 ## 1.0.0 — Tiling workspace · 2026-11-02

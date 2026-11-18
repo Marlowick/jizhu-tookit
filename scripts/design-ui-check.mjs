@@ -12,8 +12,8 @@ try {
   await page.goto('http://127.0.0.1:1420/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(300)
 
-  assert.equal(await page.locator('.app').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(238, 240, 243)')
-  assert.equal(Math.round(await page.locator('.titlebar').evaluate((node) => node.getBoundingClientRect().height)), 40)
+  assert.equal(await page.locator('.app').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(39, 40, 34)')
+  assert.equal(Math.round(await page.locator('.titlebar').evaluate((node) => node.getBoundingClientRect().height)), 32)
   assert.equal(Math.round(await page.locator('.statusbar').evaluate((node) => node.getBoundingClientRect().height)), 28)
   assert.equal(await page.locator('.titlebar-command').count(), 1)
   assert.equal(await page.locator('.titlebar-find, .titlebar-quick').count(), 0)
@@ -28,7 +28,7 @@ try {
   assert.equal(await page.locator('.palette-search input').count(), 1)
   assert.equal(Math.round(await page.locator('.palette').evaluate((node) => node.getBoundingClientRect().width)), 640)
   assert.equal(Math.round(await page.locator('.palette').evaluate((node) => node.getBoundingClientRect().top)), 120)
-  assert.equal(await page.locator('.palette').evaluate((node) => getComputedStyle(node).borderRadius), '10px')
+  assert.equal(await page.locator('.palette').evaluate((node) => getComputedStyle(node).borderRadius), '2px')
   assert.equal(Math.round(await page.locator('.palette-search').evaluate((node) => node.getBoundingClientRect().height)), 46)
   assert.equal(Math.round(await page.locator('.palette-item').first().evaluate((node) => node.getBoundingClientRect().height)), 38)
   await page.keyboard.press('Escape')
@@ -63,7 +63,7 @@ try {
   assert.equal(await page.locator('.side-tool-source-badge').innerText(), '输入：当前文档')
   assert.equal(Math.round(await page.locator('.workspace-qr-editor').evaluate((node) => node.getBoundingClientRect().width)), 792)
   assert.equal(Math.round(await page.locator('.mermaid-toolbar').evaluate((node) => node.getBoundingClientRect().height)), 38)
-  assert.equal(await page.locator('.mermaid-stage').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(242, 244, 247)')
+  assert.equal(await page.locator('.mermaid-stage').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(39, 40, 34)')
 
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
@@ -77,7 +77,7 @@ try {
   assert.ok(toastBox)
   assert.equal(Math.round(toastBox.height), 36)
   assert.equal(Math.round(toastBox.x + toastBox.width), 1424)
-  assert.equal(await page.locator('.toast').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(250, 251, 252)')
+  assert.equal(await page.locator('.toast').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(59, 59, 59)')
   await page.getByRole('button', { name: '关闭Mermaid 预览', exact: true }).click()
 
   await page.keyboard.press('Meta+k')

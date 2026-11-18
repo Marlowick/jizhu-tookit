@@ -99,8 +99,6 @@ export interface Tab {
   title: string
   instance?: number
   workspace?: WorkspaceState
-  treeOpen?: boolean
-  expanded: string[]
   jqOpen?: boolean
   jqExpr?: string
   jqInput?: string
@@ -297,11 +295,9 @@ export interface PipelineState {
   split?: number
 }
 
-export type ThemeMode = 'ghostty' | 'solarized-dark' | 'solarized-light' | 'light'
 export type Language = 'zh-CN' | 'en-US'
 
 export interface AppSettings {
-  theme: ThemeMode
   language: Language
   editorFontSize: number
   uiScale: number

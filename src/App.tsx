@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { CommandPalette } from './components/CommandPalette'
+import { QuickActionMenu } from './components/QuickActionMenu'
 import { ModePicker } from './components/ModePicker'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StatusBar } from './components/StatusBar'
@@ -109,16 +110,16 @@ export default function App() {
 
   const workspace = activeTab?.workspace
   const [modePickerOpen, setModePickerOpen] = useState(false)
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null)
 
   useEffect(() => {
-    const light = settings.theme === 'solarized-light' || settings.theme === 'light'
-    document.documentElement.dataset.theme = light ? 'light' : 'dark'
-    document.documentElement.dataset.themeVariant = settings.theme
-    document.documentElement.style.colorScheme = light ? 'light' : 'dark'
+    document.documentElement.dataset.theme = 'dark'
+    document.documentElement.dataset.themeVariant = 'sublime'
+    document.documentElement.style.colorScheme = 'dark'
     document.documentElement.lang = settings.language
     document.documentElement.style.setProperty('--editor-font-size', `${settings.editorFontSize}px`)
-  }, [settings.editorFontSize, settings.language, settings.theme])
+  }, [settings.editorFontSize, settings.language])
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
@@ -245,6 +246,22 @@ export default function App() {
         return
       }
 
+      if (mod && !event.shiftKey && !event.altKey && key === 'n') {
+        event.preventDefault()
+        if (closePrompt || settingsOpen || modePickerOpen) return
+        setPaletteOpen(false)
+        setQuickActionsOpen(false)
+        newWorkspace()
+        return
+      }
+
+      if (mod && !event.shiftKey && !event.altKey && key === 'l') {
+        event.preventDefault()
+        if (closePrompt || paletteOpen || settingsOpen || modePickerOpen) return
+        setQuickActionsOpen((open) => !open)
+        return
+      }
+
       if (mod && !event.altKey && (event.code === 'Equal' || key === '=' || key === '+')) {
         event.preventDefault()
         scaleBy(UI_SCALE_STEP)
@@ -286,6 +303,7 @@ export default function App() {
   }, [
     activate,
     closePrompt,
+    newWorkspace,
     modePickerOpen,
     paletteOpen,
     requestClose,
@@ -295,21 +313,22 @@ export default function App() {
     settingsOpen,
   ])
 
+  const modeName = workspace?.mode === 'json' ? 'JSON' : workspace?.mode === 'calc' ? 'Calc' : 'Plain'
+  const hasDocumentText = Boolean(activeDoc?.text.trim())
+  const jsonDisabledReason =
+    workspace?.mode !== 'json'
+      ? `仅适用于 JSON 模式（当前为 ${modeName}）`
+      : !hasDocumentText
+        ? '当前文档为空'
+        : summary && !summary.valid
+          ? '当前内容不是有效 JSON，请先修复语法'
+          : undefined
+
   const commands = useMemo<CommandItem[]>(() => {
     const items: CommandItem[] = []
     if (!activeTab || !workspace) return items
 
-    const modeName = workspace.mode === 'json' ? 'JSON' : workspace.mode === 'calc' ? 'Calc' : 'Plain'
-    const hasText = Boolean(activeDoc?.text.trim())
-    const jsonDisabledReason =
-      workspace.mode !== 'json'
-        ? `仅适用于 JSON 模式（当前为 ${modeName}）`
-        : !hasText
-          ? '当前文档为空'
-          : summary && !summary.valid
-            ? '当前内容不是有效 JSON，请先修复语法'
-            : undefined
-    const copyDisabledReason = hasText ? undefined : '当前文档为空'
+    const copyDisabledReason = hasDocumentText ? undefined : '当前文档为空'
     const zoomInDisabledReason = settings.uiScale >= UI_SCALE_MAX ? `已达到最大缩放 ${Math.round(UI_SCALE_MAX * 100)}%` : undefined
     const zoomOutDisabledReason = settings.uiScale <= UI_SCALE_MIN ? `已达到最小缩放 ${Math.round(UI_SCALE_MIN * 100)}%` : undefined
     const zoomResetDisabledReason = settings.uiScale === 1 ? '当前已经是 100%' : undefined
@@ -380,7 +399,7 @@ export default function App() {
         keywords: ['new', 'tab', 'workspace'],
         description: '创建一个新的空白编辑工作区',
         group: '全局',
-        hint: '+',
+        hint: modKey('N'),
         icon: Plus,
         run: newWorkspace,
       },
@@ -505,6 +524,21 @@ export default function App() {
       <StatusBar />
       {paletteOpen ? (
         <CommandPalette items={commands} onClose={() => setPaletteOpen(false)} />
+      ) : null}
+      {quickActionsOpen ? (
+        <QuickActionMenu
+          mode={workspace.mode}
+          formatDisabledReason={jsonDisabledReason}
+          onFormat={() => {
+            setQuickActionsOpen(false)
+            void handleFormat()
+          }}
+          onMode={(mode) => {
+            setWorkspaceMode(activeTab.id, mode)
+            setQuickActionsOpen(false)
+          }}
+          onClose={() => setQuickActionsOpen(false)}
+        />
       ) : null}
       {settingsOpen ? <SettingsDialog /> : null}
       {modePickerOpen ? (

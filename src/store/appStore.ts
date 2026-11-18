@@ -27,13 +27,7 @@ import type {
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-function normalizeTheme(value: unknown): import('../core/types').ThemeMode {
-  if (value === 'solarized-dark' || value === 'solarized-light' || value === 'ghostty') return value
-  return 'light'
-}
-
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'light',
   language: 'zh-CN',
   editorFontSize: 12.5,
   uiScale: 1,
@@ -57,8 +51,6 @@ function createWorkspace(index: number): { tab: Tab; doc: Doc } {
     tool: 'json',
     docId,
     title: String(index),
-    treeOpen: true,
-    expanded: [''],
     workspace: {
       mode: 'plain',
       panels: [],
@@ -72,7 +64,7 @@ function createWorkspace(index: number): { tab: Tab; doc: Doc } {
 
 const initialWorkspace = createWorkspace(1)
 
-type PersistedState = Pick<AppState, 'docs' | 'tabs' | 'activeTabId' | 'splitRatio' | 'settings' | 'commandUsage'>
+type PersistedState = Pick<AppState, 'docs' | 'tabs' | 'activeTabId' | 'settings' | 'commandUsage'>
 
 interface AppState {
   docs: Record<string, Doc>
@@ -81,7 +73,6 @@ interface AppState {
   selectionText: string
   editorHighlights: EditorHighlights | null
   paletteOpen: boolean
-  splitRatio: number
   cursor: Cursor
   summary: AnalysisSummary | null
   settings: AppSettings
@@ -91,7 +82,6 @@ interface AppState {
 
   newWorkspace: () => void
   setWorkspaceMode: (tabId: string, mode: WorkspaceMode) => void
-  setTreeOpen: (tabId: string, open: boolean) => void
   setSideSplit: (tabId: string, ratio: number) => void
   openWorkspacePanel: (tabId: string, type: WorkspacePanelType) => void
   closeSideTool: (tabId: string) => void
@@ -104,13 +94,10 @@ interface AppState {
   activate: (tabId: string) => void
   setText: (docId: string, text: string, dirty?: boolean) => void
   setPaletteOpen: (open: boolean) => void
-  setSplitRatio: (ratio: number) => void
   setCursor: (cursor: Cursor) => void
   setSelectionText: (text: string) => void
   setEditorHighlights: (highlights: EditorHighlights | null) => void
   setSummary: (summary: AnalysisSummary | null) => void
-  toggleExpanded: (tabId: string, path: string) => void
-  expandPaths: (tabId: string, paths: string[]) => void
   setJqExpr: (tabId: string, expr: string) => void
   setJqInput: (tabId: string, input: string) => void
   setDiffState: (tabId: string, state: DiffState) => void
@@ -185,7 +172,6 @@ export const useAppStore = create<AppState>()(
       selectionText: '',
       editorHighlights: null,
       paletteOpen: false,
-      splitRatio: 0.42,
       cursor: { line: 1, col: 1, pos: 0 },
       summary: null,
       settings: DEFAULT_SETTINGS,
@@ -251,28 +237,8 @@ export const useAppStore = create<AppState>()(
         }),
 
       setPaletteOpen: (open) => set({ paletteOpen: open }),
-      setSplitRatio: (ratio) => set({ splitRatio: Math.min(0.72, Math.max(0.15, ratio)) }),
       setCursor: (cursor) => set({ cursor }),
       setSummary: (summary) => set({ summary }),
-
-      toggleExpanded: (tabId, path) =>
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab
-            const open = tab.expanded.includes(path)
-            return { ...tab, expanded: open ? tab.expanded.filter((item) => item !== path) : [...tab.expanded, path] }
-          }),
-        })),
-
-      expandPaths: (tabId, paths) =>
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab
-            const merged = new Set(tab.expanded)
-            for (const path of paths) merged.add(path)
-            return { ...tab, expanded: [...merged] }
-          }),
-        })),
 
       setJqExpr: (tabId, expr) =>
         set((state) => ({
@@ -356,7 +322,6 @@ export const useAppStore = create<AppState>()(
             tab.id === tabId
               ? {
                   ...tab,
-                  treeOpen: mode === 'json' ? true : tab.treeOpen,
                   workspace: {
                     ...(tab.workspace ?? { panels: [], activePanelId: null, maximizedPanelId: null }),
                     mode,
@@ -364,11 +329,6 @@ export const useAppStore = create<AppState>()(
                 }
               : tab,
           ),
-        })),
-
-      setTreeOpen: (tabId, open) =>
-        set((state) => ({
-          tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, treeOpen: open } : tab)),
         })),
 
       setSideSplit: (tabId, ratio) =>
@@ -565,7 +525,6 @@ export const useAppStore = create<AppState>()(
             settings: {
               ...DEFAULT_SETTINGS,
               ...(saved.settings ?? {}),
-              theme: normalizeTheme(saved.settings?.theme),
               wordWrap: true,
               uiScale: clampUiScale(saved.settings?.uiScale ?? DEFAULT_SETTINGS.uiScale),
             },
@@ -577,7 +536,6 @@ export const useAppStore = create<AppState>()(
         docs: state.docs,
         tabs: state.tabs,
         activeTabId: state.activeTabId,
-        splitRatio: state.splitRatio,
         settings: state.settings,
         commandUsage: state.commandUsage,
       }),
@@ -588,7 +546,6 @@ export const useAppStore = create<AppState>()(
           tab.workspace
             ? {
                 ...tab,
-                treeOpen: tab.treeOpen ?? true,
                 workspace: (() => {
                   const normalized = tab.workspace.panels.map((panel) => ({
                     ...panel,
@@ -622,7 +579,6 @@ export const useAppStore = create<AppState>()(
           settings: {
             ...DEFAULT_SETTINGS,
             ...(saved.settings ?? {}),
-            theme: normalizeTheme(saved.settings?.theme),
             uiScale: clampUiScale(saved.settings?.uiScale ?? DEFAULT_SETTINGS.uiScale),
           },
           commandUsage: Object.fromEntries(

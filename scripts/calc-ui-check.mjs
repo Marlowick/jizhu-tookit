@@ -90,6 +90,21 @@ await page.waitForTimeout(700)
 const withTime = await page.locator('.calc-result').allInnerTexts()
 assert.match(withTime.at(-1) ?? '', /^= \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 
+// 回车换行后答案必须留在原行，不能被映射到新的空行
+await page.keyboard.press('Meta+a')
+await page.keyboard.press('Backspace')
+await page.keyboard.insertText('1 + 2\n2 + 3')
+await page.waitForTimeout(700)
+await page.locator('.cm-line').nth(1).click()
+await page.keyboard.press('End')
+await page.keyboard.press('Enter')
+await page.keyboard.press('Enter')
+await page.waitForTimeout(500)
+const rowsAfterEnter = await page.locator('.cm-line').evaluateAll((nodes) =>
+  nodes.map((node) => node.querySelector('.calc-result')?.textContent ?? null),
+)
+assert.deepEqual(rowsAfterEnter.slice(0, 4), ['= 3', '= 5', null, null], 'answers stay on their own lines after Enter')
+
 assert.deepEqual(errors, [])
 await page.screenshot({ path: '/tmp/jizhu-calc-check.png' })
 await browser.close()

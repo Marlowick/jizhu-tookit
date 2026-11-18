@@ -59,9 +59,6 @@ export function TabBar({ onNewTab }: TabBarProps) {
   return (
     <>
       <nav className={`tabbar tiling-tabbar ${density}`} aria-label="工作区标签" data-tauri-drag-region>
-        <button className="tab-new" onClick={onNewTab} title={t('tab.new')} aria-label={t('tab.new')}>
-          <Plus size={12} strokeWidth={1.8} />
-        </button>
         {tabs.map((tab, index) => {
           const label = tabLabel(tab, docs)
           const dirty = Boolean(tab.docId && docs[tab.docId]?.dirty)
@@ -80,22 +77,24 @@ export function TabBar({ onNewTab }: TabBarProps) {
             >
               <TabModeIcon tab={tab} />
               <span className="tab-label">{label}</span>
-              {dirty ? <span className="tab-dirty-dot" aria-label="未保存" /> : (
-                <button
-                  className="tab-close"
-                  aria-label={t('tab.close')}
-                  title={t('tab.close')}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    requestClose(tab)
-                  }}
-                >
-                  <X size={9} strokeWidth={2} />
-                </button>
-              )}
+              {dirty ? <span className="tab-dirty-dot" aria-label="未保存" /> : null}
+              <button
+                className="tab-close"
+                aria-label={`${t('tab.close')} ${label}`}
+                title={t('tab.close')}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  requestClose(tab)
+                }}
+              >
+                <X size={10} strokeWidth={2} />
+              </button>
             </div>
           )
         })}
+        <button className="tab-new" onClick={onNewTab} title={t('tab.new')} aria-label={t('tab.new')}>
+          <Plus size={13} strokeWidth={1.8} />
+        </button>
       </nav>
 
       {confirming ? (

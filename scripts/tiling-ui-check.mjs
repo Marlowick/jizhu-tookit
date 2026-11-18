@@ -54,12 +54,16 @@ try {
 
   assert.equal(
     await page.locator('.app').evaluate((node) => getComputedStyle(node).backgroundColor),
-    'rgb(238, 240, 243)',
+    'rgb(39, 40, 34)',
   )
   assert.equal(
     await page.locator('.status-mode').evaluate((node) => getComputedStyle(node).color),
-    'rgb(87, 96, 106)',
+    'rgb(184, 184, 176)',
   )
+
+  assert.equal(await page.locator('.tab-new').count(), 1)
+  assert.equal(await page.locator('.tab-new').evaluate((node) => getComputedStyle(node).opacity), '1')
+  assert.equal(await page.locator('.tab.active .tab-close').evaluate((node) => getComputedStyle(node).opacity), '1')
 
   step('Tiling shell starts with one numbered plain workspace')
   assert.equal(await page.locator('.tiling-tab').count(), 1)
@@ -67,7 +71,7 @@ try {
   assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
   assert.equal(await page.locator('.workspace-editor').count(), 1)
   assert.equal(await page.locator('#welcome, .welcome').count(), 0)
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light')
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark')
 
   step('blank editor advertises ⌘K; Space remains text input')
   assert.equal(await page.locator('.empty-editor-shortcuts kbd').last().innerText(), '⌘K 命令面板')
@@ -167,7 +171,7 @@ try {
   await page.getByRole('option', { name: /JSON/ }).click()
   await page.waitForTimeout(350)
   assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
-  assert.equal(await page.locator('.json-tool .tree-pane').count(), 1)
+  assert.equal(await page.locator('.json-tool').count(), 1)
   await page.locator('.status-mode').click()
   await page.waitForTimeout(120)
   await page.getByRole('option', { name: /PLAIN/ }).click()
@@ -265,28 +269,16 @@ try {
   await closeOpenTool()
   assert.equal(await page.locator('.workspace-panel').count(), 0)
 
-  step('settings opens from command palette; Ghostty / Solarized themes')
+  step('settings opens from command palette; single Sublime dark theme')
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   await page.waitForTimeout(200)
   await openCommand('设置')
   assert.equal(await page.locator('.settings-dialog').count(), 1)
-  const themeRow = page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).first()
-  assert.equal(await themeRow.locator('select').inputValue(), 'light')
-  await themeRow.locator('select').selectOption('light')
-  await page.waitForTimeout(250)
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'light')
-  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(238, 240, 243)')
-  await themeRow.locator('select').selectOption('solarized-light')
-  await page.waitForTimeout(300)
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'solarized-light')
-  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(253, 246, 227)')
-  await themeRow.locator('select').selectOption('solarized-dark')
-  await page.waitForTimeout(300)
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'solarized-dark')
-  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(0, 43, 54)')
-  await themeRow.locator('select').selectOption('ghostty')
-  await page.waitForTimeout(200)
+  assert.equal(await page.locator('.settings-dialog .settings-row').filter({ hasText: '主题' }).count(), 0)
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark')
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.themeVariant), 'sublime')
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.app')).backgroundColor), 'rgb(39, 40, 34)')
   await page.locator('.settings-dialog').getByRole('button', { name: '编辑器' }).click()
   await page.waitForTimeout(150)
   assert.equal(await page.locator('.settings-dialog select').last().inputValue(), '2')
@@ -353,33 +345,14 @@ try {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(120)
 
-  step('switch to JSON mode: keyboard mode picker, tree and syntax colors')
+  step('switch to JSON mode: keyboard mode picker and syntax colors')
   await openCommand('mode')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await page.waitForTimeout(300)
   assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
   assert.equal(await page.locator('.json-tool').count(), 1)
-  assert.equal(await page.locator('.json-tool .tree-pane').count(), 1)
-  await page.getByRole('button', { name: '隐藏树形区域' }).click()
-  await page.waitForTimeout(150)
-  assert.equal(await page.locator('.json-tool .tree-pane').count(), 0)
-  await page.getByRole('button', { name: '打开树形区域' }).click()
-  await page.waitForTimeout(150)
-  assert.equal(await page.locator('.json-tool .tree-pane').count(), 1)
-
-  const treeBefore = await page.locator('.json-tool .tree-pane').evaluate((node) => Math.round(node.getBoundingClientRect().width))
-  const resizer = await page.locator('.json-tool .resizer').boundingBox()
-  assert.ok(resizer)
-  await page.mouse.move(resizer.x + resizer.width / 2, resizer.y + 200)
-  await page.mouse.down()
-  await page.mouse.move(40, resizer.y + 200, { steps: 8 })
-  await page.mouse.up()
-  await page.waitForTimeout(250)
-  const treeAfter = await page.locator('.json-tool .tree-pane').evaluate((node) => Math.round(node.getBoundingClientRect().width))
-  assert.ok(treeAfter >= 150)
-  assert.ok(treeAfter < treeBefore)
-  assert.ok(treeAfter < 320)
+  assert.equal(await page.locator('.tree-pane').count(), 0)
 
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
@@ -388,26 +361,57 @@ try {
   const syntaxColors = await page.locator('.cm-content .cm-line span').evaluateAll((nodes) =>
     nodes.map((node) => getComputedStyle(node).color),
   )
-  assert.ok(syntaxColors.includes('rgb(129, 162, 190)'), 'JSON keys should be Ghostty blue')
-  assert.ok(syntaxColors.includes('rgb(181, 189, 104)'), 'JSON strings should be Ghostty green')
-  assert.ok(syntaxColors.includes('rgb(240, 198, 116)'), 'JSON numbers should be Ghostty yellow')
-  assert.ok(syntaxColors.includes('rgb(204, 102, 102)'), 'JSON booleans should be Ghostty red')
+  assert.ok(syntaxColors.includes('rgb(249, 38, 114)'), 'JSON keys should be Monokai pink')
+  assert.ok(syntaxColors.includes('rgb(230, 219, 116)'), 'JSON strings should be Monokai yellow')
+  assert.ok(syntaxColors.includes('rgb(174, 129, 255)'), 'JSON numbers should be Monokai purple')
+  assert.ok(syntaxColors.includes('rgb(102, 217, 239)'), 'JSON booleans should be Monokai cyan')
   const foldMarkers = page.locator('.cm-foldGutter .cm-gutterElement span[title="Fold line"]')
   assert.ok((await foldMarkers.count()) > 0, 'JSON editor should expose fold markers')
   await foldMarkers.first().click()
   await page.waitForTimeout(200)
   assert.ok((await page.locator('.cm-foldPlaceholder').count()) > 0, 'clicking fold marker should fold JSON')
 
-  const hscroll = await page.locator('.tree-wrap').evaluate((node) => ({
-    client: node.clientWidth,
-    scroll: node.scrollWidth,
-  }))
-  assert.ok(hscroll.scroll > hscroll.client)
-  await page.locator('.tree-wrap').evaluate((node) => {
-    node.scrollLeft = 60
-  })
+  step('⌘L quick actions: format and mode menu')
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Meta+a')
+  await page.keyboard.insertText('{"a":1}')
+  await page.waitForTimeout(250)
+  await page.keyboard.press('Meta+l')
+  await page.waitForTimeout(150)
+  assert.equal(await page.locator('.quick-actions-menu').count(), 1)
+  assert.equal(await page.locator('.quick-actions-option').count(), 2)
+  await page.keyboard.press('f')
+  await page.waitForTimeout(350)
+  assert.match(await page.locator('.cm-content').innerText(), /"a": 1/)
+  assert.equal(await page.locator('.quick-actions-menu').count(), 0)
+
+  await page.keyboard.press('Meta+l')
+  await page.waitForTimeout(100)
+  await page.keyboard.press('m')
+  await page.waitForTimeout(150)
+  assert.equal(await page.locator('.quick-actions-option').count(), 3)
+  const modeKeys = await page.locator('.quick-actions-key').allInnerTexts()
+  assert.ok(modeKeys.includes('j') && modeKeys.includes('p') && modeKeys.includes('c'))
+  await page.keyboard.press('p')
+  await page.waitForTimeout(250)
+  assert.equal(await page.locator('.status-mode').innerText(), '普通文本')
+  assert.equal(await page.locator('.quick-actions-menu').count(), 0)
+
+  await page.keyboard.press('Meta+l')
   await page.waitForTimeout(120)
-  assert.ok((await page.locator('.tree-wrap').evaluate((node) => node.scrollLeft)) > 0)
+  assert.equal(await page.locator('.quick-actions-option.disabled').count(), 1)
+  assert.match(await page.locator('.quick-actions-option.disabled').innerText(), /仅适用于 JSON 模式/)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(100)
+
+  await page.keyboard.press('Meta+l')
+  await page.waitForTimeout(100)
+  await page.keyboard.press('m')
+  await page.waitForTimeout(100)
+  await page.keyboard.press('j')
+  await page.waitForTimeout(250)
+  assert.equal(await page.locator('.status-mode').innerText(), 'JSON')
+
   // 恢复文档，后续标签标题断言使用 alpha beta
   await page.locator('.cm-content').click()
   await page.keyboard.press('Meta+a')
@@ -439,13 +443,26 @@ try {
   const mermaidColors = await page.locator('.cm-content .cm-line span').evaluateAll((nodes) =>
     nodes.map((node) => getComputedStyle(node).color),
   )
-  assert.ok(mermaidColors.includes('rgb(129, 162, 190)'), 'Mermaid keywords should be highlighted')
-  assert.ok(mermaidColors.includes('rgb(204, 102, 102)'), 'Mermaid arrows should be highlighted')
+  assert.ok(mermaidColors.includes('rgb(249, 38, 114)'), 'Mermaid keywords should be highlighted')
+  assert.ok(mermaidColors.includes('rgb(102, 217, 239)'), 'Mermaid arrows should be highlighted')
   await page.locator('.mermaid-toolbar .btn.ghost').filter({ hasText: '示例' }).click()
   await page.waitForTimeout(150)
   assert.equal(await page.locator('.mermaid-example-item').count(), 28)
   await page.locator('.mermaid-example-item').filter({ hasText: '时序图' }).click()
   await page.waitForTimeout(850)
+  await page.keyboard.press('Meta+=')
+  await page.waitForTimeout(350)
+  const mermaidBounds = await page.evaluate(() => {
+    const stage = document.querySelector('.mermaid-stage')
+    const svg = document.querySelector('.mermaid-canvas svg')
+    return {
+      stage: stage.getBoundingClientRect().right,
+      svg: svg.getBoundingClientRect().right,
+    }
+  })
+  assert.ok(mermaidBounds.svg <= mermaidBounds.stage + 1, 'Mermaid SVG must stay inside the preview pane after UI zoom')
+  await page.keyboard.press('Meta+-')
+  await page.waitForTimeout(350)
   assert.match(await page.locator('.cm-content').innerText(), /sequenceDiagram/)
   assert.equal(await page.locator('.mermaid-error').count(), 0)
   assert.ok((await page.locator('.mermaid-canvas svg').count()) > 0)
@@ -492,8 +509,8 @@ try {
   await page.keyboard.type('beta')
   await page.waitForTimeout(250)
 
-  step('new numbered workspace and ⌘1/2/9 switching')
-  await page.locator('.tab-new').click()
+  step('⌘N creates a new numbered workspace; ⌘1/2/9 switching')
+  await page.keyboard.press('Meta+n')
   await page.waitForTimeout(250)
   assert.equal(await page.locator('.tiling-tab').count(), 2)
   assert.equal(await page.locator('.tiling-tab').nth(1).locator('.tab-label').innerText(), 'untitled-2')

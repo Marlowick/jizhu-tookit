@@ -31,3 +31,6 @@ audit/
 assets/
 scripts/shot.mjs
 scripts/audit-deps.sh
+
+# 本地打包产物（不进入源码仓库）
+release/

@@ -16,6 +16,7 @@ const TABS: Array<{ id: SettingsTab; icon: typeof Settings }> = [
 
 const SHORTCUTS: Array<[string, string]> = [
   [modKey('K'), 'settings.shortcut.palette'],
+  [modKey('N'), 'settings.shortcut.newTab'],
   [modKey('F'), 'settings.shortcut.search'],
   [modKey('Z'), 'settings.shortcut.undo'],
   [modKey('⇧Z'), 'settings.shortcut.redo'],
@@ -91,21 +92,6 @@ export function SettingsDialog() {
             {tab === 'general' ? (
               <>
                 <div className="settings-section-title">{t('settings.general.interface')}</div>
-                <div className="settings-row">
-                  <div>
-                    <strong>{t('settings.theme.label')}</strong>
-                    <span>{t('settings.theme.desc')}</span>
-                  </div>
-                  <select
-                    value={settings.theme}
-                    onChange={(event) => updateSettings({ theme: event.target.value as typeof settings.theme })}
-                  >
-                    <option value="ghostty">{t('settings.theme.ghostty')}</option>
-                    <option value="light">{t('settings.theme.light')}</option>
-                    <option value="solarized-dark">{t('settings.theme.solarizedDark')}</option>
-                    <option value="solarized-light">{t('settings.theme.solarizedLight')}</option>
-                  </select>
-                </div>
                 <div className="settings-row">
                   <div>
                     <strong>{t('settings.scale.label')}</strong>

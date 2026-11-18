@@ -86,17 +86,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 https://github.com/squirrelchat/smol-toml
 
-## Solarized
-
-The Solarized Light and Solarized Dark themes use the Solarized color palette
-created by Ethan Schoonover.
-
-Solarized is distributed under the MIT License.
-https://github.com/altercation/solarized
-
 ## Mermaid
 
 Mermaid diagram rendering uses the Mermaid library.
 
 MIT License. Copyright (c) 2014-2026 Knut Sveidqvist and contributors.
 https://github.com/mermaid-js/mermaid
+
+## Monokai color scheme
+
+The Sublime Dark theme uses the Monokai syntax palette created by Wimer
+Hazenberg. Monokai is distributed under the MIT License.
+http://www.monokai.nl/

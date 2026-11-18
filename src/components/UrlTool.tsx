@@ -301,15 +301,17 @@ export function UrlTool({ tab, embedded = false, source, onSourceChange }: UrlTo
                       className="btn ghost url-param-copy"
                       onClick={() => void copy(param.value, `参数 ${param.key}`)}
                       title="复制参数值"
+                      aria-label={`复制参数 ${param.key}`}
                     >
-                      <Copy size={12} strokeWidth={1.8} />
+                      <Copy size={14} strokeWidth={1.8} />
                     </button>
                     <button
                       className="btn ghost url-param-delete"
                       onClick={() => removeParam(index)}
                       title="删除参数"
+                      aria-label={`删除参数 ${param.key}`}
                     >
-                      <Trash2 size={13} strokeWidth={1.8} />
+                      <Trash2 size={15} strokeWidth={1.8} />
                     </button>
                   </div>
                   {isHttpUrl(param.value) ? (

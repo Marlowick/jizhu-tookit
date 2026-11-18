@@ -23,9 +23,26 @@ function cssVar(name: string, fallback: string): string {
 function sanitizeSvg(svg: string): string {
   // Mermaid's strict security level already escapes HTML; strip any script
   // or inline event attribute as a second line of defence.
-  return svg
+  let result = svg
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/\son[a-z]+=(".*?"|'.*?'|[^\s>]+)/gi, '')
+
+  // Mermaid emits width="100%" plus an inline max-width based on the render
+  // viewport. With page/UI zoom that makes the SVG shrink as the pane narrows.
+  // Pin the SVG to its viewBox size instead; CSS zoom then scales it consistently.
+  const viewBox = /<svg\b[^>]*\bviewBox="([^"]+)"/i.exec(result)?.[1]
+  const dimensions = viewBox?.trim().split(/\s+/).map(Number)
+  if (dimensions?.length === 4 && dimensions.every((value) => Number.isFinite(value))) {
+    const [, , width, height] = dimensions
+    result = result.replace(/<svg\b([^>]*)>/i, (tag, attributes: string) => {
+      const cleaned = attributes
+        .replace(/\swidth="[^"]*"/i, '')
+        .replace(/\sheight="[^"]*"/i, '')
+        .replace(/\sstyle="[^"]*"/i, '')
+      return `<svg width="${width}" height="${height}"${cleaned}>`
+    })
+  }
+  return result
 }
 
 function cleanError(error: unknown): string {
@@ -81,7 +98,6 @@ export function MermaidPane({ tab, doc }: MermaidPaneProps) {
   const setText = useAppStore((state) => state.setText)
   const setWorkspaceMode = useAppStore((state) => state.setWorkspaceMode)
   const showToast = useAppStore((state) => state.showToast)
-  const theme = useAppStore((state) => state.settings.theme)
   const [svg, setSvg] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -140,7 +156,7 @@ export function MermaidPane({ tab, doc }: MermaidPaneProps) {
       }
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [doc.text, theme])
+  }, [doc.text])
 
   useEffect(() => {
     setZoom(1)
@@ -272,7 +288,7 @@ export function MermaidPane({ tab, doc }: MermaidPaneProps) {
           </div>
         </div>
       ) : svg ? (
-        <div className="mermaid-stage">
+        <div className="mermaid-stage mermaid-preview-stage">
           <div
             className="mermaid-canvas"
             style={{ zoom } as React.CSSProperties}

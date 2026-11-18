@@ -153,9 +153,10 @@ interface JsonEditorProps {
   onChange: (text: string) => void
   onCursor: (cursor: Cursor) => void
   onSelection?: (text: string) => void
+  onContextMenu?: (pos: number, clientX: number, clientY: number) => void
 }
 
-export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWrap, indent = DEFAULT_JSON_INDENT, onChange, onCursor, onSelection }: JsonEditorProps) {
+export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWrap, indent = DEFAULT_JSON_INDENT, onChange, onCursor, onSelection, onContextMenu }: JsonEditorProps) {
   const { t, language } = useI18n()
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -165,11 +166,13 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
   const onChangeRef = useRef(onChange)
   const onCursorRef = useRef(onCursor)
   const onSelectionRef = useRef(onSelection)
+  const onContextMenuRef = useRef(onContextMenu)
   const currentTextRef = useRef(text)
 
   onChangeRef.current = onChange
   onCursorRef.current = onCursor
   onSelectionRef.current = onSelection
+  onContextMenuRef.current = onContextMenu
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -209,6 +212,15 @@ export function JsonEditor({ text, docId, highlights, errorLine, reveal, wordWra
           const range = update.state.selection.main
           onSelectionRef.current?.(range.empty ? '' : update.state.sliceDoc(range.from, range.to))
         }
+      }),
+      EditorView.domEventHandlers({
+        contextmenu(event, view) {
+          if (!onContextMenuRef.current) return false
+          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head
+          event.preventDefault()
+          onContextMenuRef.current(pos, event.clientX, event.clientY)
+          return true
+        },
       }),
       keymap.of([
         { key: 'Ctrl-z', run: undo, preventDefault: true },

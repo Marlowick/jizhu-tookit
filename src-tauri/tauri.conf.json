@@ -23,10 +23,10 @@
         "hiddenTitle": true,
         "trafficLightPosition": {
           "x": 18,
-          "y": 20
+          "y": 16
         },
         "dragDropEnabled": true,
-        "backgroundColor": "#282c34"
+        "backgroundColor": "#272822"
       }
     ],
     "security": {
